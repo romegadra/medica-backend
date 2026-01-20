@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listSpecialties(_req: Request, res: Response) {
   const specialties = await prisma.specialty.findMany({ orderBy: { name: 'asc' } })
@@ -7,7 +8,7 @@ export async function listSpecialties(_req: Request, res: Response) {
 }
 
 export async function getSpecialty(req: Request, res: Response) {
-  const specialty = await prisma.specialty.findUnique({ where: { id: req.params.id } })
+  const specialty = await prisma.specialty.findUnique({ where: { id: getIdParam(req) } })
   if (!specialty) {
     res.status(404).json({ error: 'Specialty not found' })
     return
@@ -27,7 +28,7 @@ export async function createSpecialty(req: Request, res: Response) {
 export async function updateSpecialty(req: Request, res: Response) {
   try {
     const specialty = await prisma.specialty.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: { name: req.body.name },
     })
     res.json(specialty)
@@ -37,7 +38,7 @@ export async function updateSpecialty(req: Request, res: Response) {
 }
 
 export async function deleteSpecialty(req: Request, res: Response) {
-  const specialty = await prisma.specialty.findUnique({ where: { id: req.params.id } })
+  const specialty = await prisma.specialty.findUnique({ where: { id: getIdParam(req) } })
   if (!specialty) {
     res.status(404).json({ error: 'Specialty not found' })
     return

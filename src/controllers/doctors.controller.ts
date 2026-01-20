@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listDoctors(_req: Request, res: Response) {
   const doctors = await prisma.doctor.findMany({ orderBy: { name: 'asc' } })
@@ -7,7 +8,7 @@ export async function listDoctors(_req: Request, res: Response) {
 }
 
 export async function getDoctor(req: Request, res: Response) {
-  const doctor = await prisma.doctor.findUnique({ where: { id: req.params.id } })
+  const doctor = await prisma.doctor.findUnique({ where: { id: getIdParam(req) } })
   if (!doctor) {
     res.status(404).json({ error: 'Doctor not found' })
     return
@@ -33,7 +34,7 @@ export async function createDoctor(req: Request, res: Response) {
 export async function updateDoctor(req: Request, res: Response) {
   try {
     const doctor = await prisma.doctor.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         name: req.body.name,
         unitId: req.body.unitId,
@@ -51,7 +52,7 @@ export async function updateDoctor(req: Request, res: Response) {
 }
 
 export async function deleteDoctor(req: Request, res: Response) {
-  const doctor = await prisma.doctor.findUnique({ where: { id: req.params.id } })
+  const doctor = await prisma.doctor.findUnique({ where: { id: getIdParam(req) } })
   if (!doctor) {
     res.status(404).json({ error: 'Doctor not found' })
     return

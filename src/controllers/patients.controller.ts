@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listPatients(_req: Request, res: Response) {
   const patients = await prisma.patient.findMany({ orderBy: { name: 'asc' } })
@@ -7,7 +8,7 @@ export async function listPatients(_req: Request, res: Response) {
 }
 
 export async function getPatient(req: Request, res: Response) {
-  const patient = await prisma.patient.findUnique({ where: { id: req.params.id } })
+  const patient = await prisma.patient.findUnique({ where: { id: getIdParam(req) } })
   if (!patient) {
     res.status(404).json({ error: 'Patient not found' })
     return
@@ -31,7 +32,7 @@ export async function createPatient(req: Request, res: Response) {
 export async function updatePatient(req: Request, res: Response) {
   try {
     const patient = await prisma.patient.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         doctorId: req.body.doctorId,
         name: req.body.name,
@@ -47,7 +48,7 @@ export async function updatePatient(req: Request, res: Response) {
 }
 
 export async function deletePatient(req: Request, res: Response) {
-  const patient = await prisma.patient.findUnique({ where: { id: req.params.id } })
+  const patient = await prisma.patient.findUnique({ where: { id: getIdParam(req) } })
   if (!patient) {
     res.status(404).json({ error: 'Patient not found' })
     return

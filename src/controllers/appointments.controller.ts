@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listAppointments(_req: Request, res: Response) {
   const appointments = await prisma.appointment.findMany({
@@ -9,7 +10,7 @@ export async function listAppointments(_req: Request, res: Response) {
 }
 
 export async function getAppointment(req: Request, res: Response) {
-  const appointment = await prisma.appointment.findUnique({ where: { id: req.params.id } })
+  const appointment = await prisma.appointment.findUnique({ where: { id: getIdParam(req) } })
   if (!appointment) {
     res.status(404).json({ error: 'Appointment not found' })
     return
@@ -42,7 +43,7 @@ export async function createAppointment(req: Request, res: Response) {
 }
 
 export async function updateAppointment(req: Request, res: Response) {
-  const existing = await prisma.appointment.findUnique({ where: { id: req.params.id } })
+  const existing = await prisma.appointment.findUnique({ where: { id: getIdParam(req) } })
   if (!existing) {
     res.status(404).json({ error: 'Appointment not found' })
     return
@@ -52,7 +53,7 @@ export async function updateAppointment(req: Request, res: Response) {
   const doctorId = req.body.doctorId ?? existing.doctorId
   const conflict = await prisma.appointment.findFirst({
     where: {
-      id: { not: req.params.id },
+      id: { not: getIdParam(req) },
       doctorId,
       start: { lt: end },
       end: { gt: start },
@@ -63,7 +64,7 @@ export async function updateAppointment(req: Request, res: Response) {
     return
   }
   const appointment = await prisma.appointment.update({
-    where: { id: req.params.id },
+    where: { id: getIdParam(req) },
     data: {
       doctorId,
       patientId: req.body.patientId,
@@ -77,7 +78,7 @@ export async function updateAppointment(req: Request, res: Response) {
 
 export async function deleteAppointment(req: Request, res: Response) {
   try {
-    await prisma.appointment.delete({ where: { id: req.params.id } })
+    await prisma.appointment.delete({ where: { id: getIdParam(req) } })
     res.status(204).send()
   } catch {
     res.status(404).json({ error: 'Appointment not found' })

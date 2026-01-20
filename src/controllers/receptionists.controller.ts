@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listReceptionists(_req: Request, res: Response) {
   const receptionists = await prisma.receptionist.findMany({ orderBy: { name: 'asc' } })
@@ -7,7 +8,7 @@ export async function listReceptionists(_req: Request, res: Response) {
 }
 
 export async function getReceptionist(req: Request, res: Response) {
-  const receptionist = await prisma.receptionist.findUnique({ where: { id: req.params.id } })
+  const receptionist = await prisma.receptionist.findUnique({ where: { id: getIdParam(req) } })
   if (!receptionist) {
     res.status(404).json({ error: 'Receptionist not found' })
     return
@@ -30,7 +31,7 @@ export async function createReceptionist(req: Request, res: Response) {
 export async function updateReceptionist(req: Request, res: Response) {
   try {
     const receptionist = await prisma.receptionist.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         name: req.body.name,
         address: req.body.address,
@@ -46,7 +47,7 @@ export async function updateReceptionist(req: Request, res: Response) {
 
 export async function deleteReceptionist(req: Request, res: Response) {
   try {
-    await prisma.receptionist.delete({ where: { id: req.params.id } })
+    await prisma.receptionist.delete({ where: { id: getIdParam(req) } })
     res.status(204).send()
   } catch {
     res.status(404).json({ error: 'Receptionist not found' })

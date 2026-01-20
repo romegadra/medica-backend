@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listUnits(_req: Request, res: Response) {
   const units = await prisma.unit.findMany({ orderBy: { name: 'asc' } })
@@ -7,7 +8,7 @@ export async function listUnits(_req: Request, res: Response) {
 }
 
 export async function getUnit(req: Request, res: Response) {
-  const unit = await prisma.unit.findUnique({ where: { id: req.params.id } })
+  const unit = await prisma.unit.findUnique({ where: { id: getIdParam(req) } })
   if (!unit) {
     res.status(404).json({ error: 'Unit not found' })
     return
@@ -31,7 +32,7 @@ export async function createUnit(req: Request, res: Response) {
 export async function updateUnit(req: Request, res: Response) {
   try {
     const unit = await prisma.unit.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         name: req.body.name,
         type: req.body.type,
@@ -47,7 +48,7 @@ export async function updateUnit(req: Request, res: Response) {
 }
 
 export async function deleteUnit(req: Request, res: Response) {
-  const unit = await prisma.unit.findUnique({ where: { id: req.params.id } })
+  const unit = await prisma.unit.findUnique({ where: { id: getIdParam(req) } })
   if (!unit) {
     res.status(404).json({ error: 'Unit not found' })
     return

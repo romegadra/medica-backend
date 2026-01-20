@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listVisits(_req: Request, res: Response) {
   const visits = await prisma.visitEntry.findMany({ orderBy: { date: 'desc' } })
@@ -7,7 +8,7 @@ export async function listVisits(_req: Request, res: Response) {
 }
 
 export async function getVisit(req: Request, res: Response) {
-  const visit = await prisma.visitEntry.findUnique({ where: { id: req.params.id } })
+  const visit = await prisma.visitEntry.findUnique({ where: { id: getIdParam(req) } })
   if (!visit) {
     res.status(404).json({ error: 'Visit not found' })
     return
@@ -31,7 +32,7 @@ export async function createVisit(req: Request, res: Response) {
 export async function updateVisit(req: Request, res: Response) {
   try {
     const visit = await prisma.visitEntry.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         doctorId: req.body.doctorId,
         patientId: req.body.patientId,
@@ -48,7 +49,7 @@ export async function updateVisit(req: Request, res: Response) {
 
 export async function deleteVisit(req: Request, res: Response) {
   try {
-    await prisma.visitEntry.delete({ where: { id: req.params.id } })
+    await prisma.visitEntry.delete({ where: { id: getIdParam(req) } })
     res.status(204).send()
   } catch {
     res.status(404).json({ error: 'Visit not found' })

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { getIdParam } from '../utils/params.js'
 
 export async function listTemplates(_req: Request, res: Response) {
   const templates = await prisma.specialtyTemplate.findMany({
@@ -11,7 +12,7 @@ export async function listTemplates(_req: Request, res: Response) {
 
 export async function getTemplate(req: Request, res: Response) {
   const template = await prisma.specialtyTemplate.findUnique({
-    where: { id: req.params.id },
+    where: { id: getIdParam(req) },
     include: { fields: true },
   })
   if (!template) {
@@ -39,17 +40,17 @@ export async function createTemplate(req: Request, res: Response) {
 }
 
 export async function updateTemplate(req: Request, res: Response) {
-  const exists = await prisma.specialtyTemplate.findUnique({ where: { id: req.params.id } })
+  const exists = await prisma.specialtyTemplate.findUnique({ where: { id: getIdParam(req) } })
   if (!exists) {
     res.status(404).json({ error: 'Template not found' })
     return
   }
   const template = await prisma.$transaction(async (tx) => {
     if (req.body.fields) {
-      await tx.specialtyField.deleteMany({ where: { templateId: req.params.id } })
+      await tx.specialtyField.deleteMany({ where: { templateId: getIdParam(req) } })
     }
     return tx.specialtyTemplate.update({
-      where: { id: req.params.id },
+      where: { id: getIdParam(req) },
       data: {
         specialtyId: req.body.specialtyId,
         fields: req.body.fields
@@ -70,8 +71,8 @@ export async function updateTemplate(req: Request, res: Response) {
 
 export async function deleteTemplate(req: Request, res: Response) {
   try {
-    await prisma.specialtyField.deleteMany({ where: { templateId: req.params.id } })
-    await prisma.specialtyTemplate.delete({ where: { id: req.params.id } })
+    await prisma.specialtyField.deleteMany({ where: { templateId: getIdParam(req) } })
+    await prisma.specialtyTemplate.delete({ where: { id: getIdParam(req) } })
     res.status(204).send()
   } catch {
     res.status(404).json({ error: 'Template not found' })
