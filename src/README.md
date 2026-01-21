@@ -12,7 +12,7 @@ yarn dev
 
 All routes are under `/api`.
 
-- `POST /api/auth/login` (mock login; returns JWT)
+- `POST /api/auth/login` (email/password; returns JWT)
 - `GET /api/specialties`
 - `POST /api/specialties`
 - `PUT /api/specialties/:id`
