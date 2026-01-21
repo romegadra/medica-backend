@@ -32,6 +32,7 @@ model Specialty {
 model Doctor {
   id              String      @id @default(cuid())
   name            String
+  email           String?
   unitId          String
   specialtyId     String?
   phone           String?
@@ -50,6 +51,7 @@ model Doctor {
 model Receptionist {
   id        String   @id @default(cuid())
   name      String
+  email     String?
   address   String
   phone     String
   unitId    String
@@ -127,6 +129,7 @@ model User {
   role      String
   doctorId  String?
   unitId    String?
+  mustChangePassword Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

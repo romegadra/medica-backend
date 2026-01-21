@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 
 type AuthPayload = {
+  userId: string
   role: string
   doctorId?: string
   unitId?: string

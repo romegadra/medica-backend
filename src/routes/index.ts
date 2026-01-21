@@ -48,7 +48,8 @@ import {
   listVisits,
   updateVisit,
 } from '../controllers/visits.controller.js'
-import { login } from '../controllers/auth.controller.js'
+import { changePassword, login } from '../controllers/auth.controller.js'
+import { requireAuth } from '../middleware/auth.js'
 import {
   createSpecialty,
   deleteSpecialty,
@@ -60,6 +61,7 @@ import {
 export const router = Router()
 
 router.post('/auth/login', login)
+router.post('/auth/change-password', requireAuth, changePassword)
 
 router.get('/specialties', listSpecialties)
 router.get('/specialties/:id', getSpecialty)
