@@ -13,6 +13,8 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
+// eslint-disable-next-line no-console
+console.info('[CORS] Allowed origins:', allowedOrigins.length ? allowedOrigins : '(all)')
 
 app.use(
   cors({
