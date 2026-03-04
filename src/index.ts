@@ -9,7 +9,28 @@ dotenv.config()
 const app = express()
 const port = process.env.PORT ? Number(process.env.PORT) : 3001
 
-app.use(cors())
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true)
+        return
+      }
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        callback(null, true)
+        return
+      }
+      callback(new Error('Not allowed by CORS'))
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+)
 app.use(express.json())
 
 app.get('/health', (_req, res) => {
