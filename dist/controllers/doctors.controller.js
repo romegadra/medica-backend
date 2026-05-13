@@ -162,6 +162,7 @@ export async function deleteDoctor(req, res) {
         await tx.visitEntry.deleteMany({ where: { doctorId: doctor.id } });
         await tx.appointment.deleteMany({ where: { doctorId: doctor.id } });
         await tx.patient.deleteMany({ where: { doctorId: doctor.id } });
+        await tx.doctorSchedule.deleteMany({ where: { doctorId: doctor.id } });
         await tx.doctor.delete({ where: { id: doctor.id } });
     });
     res.status(204).send();

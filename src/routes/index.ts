@@ -38,6 +38,12 @@ import {
   updateAppointment,
 } from '../controllers/appointments.controller.js'
 import {
+  createDoctorSchedule,
+  deleteDoctorSchedule,
+  listDoctorSchedules,
+  updateDoctorSchedule,
+} from '../controllers/doctorSchedules.controller.js'
+import {
   createTemplate,
   deleteTemplate,
   getTemplate,
@@ -109,6 +115,11 @@ router.post('/appointments', createAppointment)
 router.put('/appointments/:id', updateAppointment)
 router.post('/appointments/:id/cancel', cancelAppointment)
 router.delete('/appointments/:id', deleteAppointment)
+
+router.get('/doctor-schedules', listDoctorSchedules)
+router.post('/doctor-schedules', createDoctorSchedule)
+router.put('/doctor-schedules/:id', updateDoctorSchedule)
+router.delete('/doctor-schedules/:id', deleteDoctorSchedule)
 
 router.get('/templates', listTemplates)
 router.get('/templates/:id', getTemplate)

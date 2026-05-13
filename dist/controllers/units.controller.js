@@ -55,6 +55,7 @@ export async function deleteUnit(req, res) {
             await tx.visitEntry.deleteMany({ where: { doctorId: { in: doctorIds } } });
             await tx.appointment.deleteMany({ where: { doctorId: { in: doctorIds } } });
             await tx.patient.deleteMany({ where: { doctorId: { in: doctorIds } } });
+            await tx.doctorSchedule.deleteMany({ where: { doctorId: { in: doctorIds } } });
             await tx.doctor.deleteMany({ where: { id: { in: doctorIds } } });
         }
         await tx.receptionist.deleteMany({ where: { unitId: unit.id } });

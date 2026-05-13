@@ -4,6 +4,7 @@ import { createDoctor, deleteDoctor, getDoctor, listDoctors, resetDoctorPassword
 import { createReceptionist, deleteReceptionist, getReceptionist, listReceptionists, resetReceptionistPassword, updateReceptionist, } from '../controllers/receptionists.controller.js';
 import { createPatient, deletePatient, getPatient, listPatients, updatePatient, } from '../controllers/patients.controller.js';
 import { cancelAppointment, createAppointment, deleteAppointment, getAppointment, listAppointments, updateAppointment, } from '../controllers/appointments.controller.js';
+import { createDoctorSchedule, deleteDoctorSchedule, listDoctorSchedules, updateDoctorSchedule, } from '../controllers/doctorSchedules.controller.js';
 import { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate, } from '../controllers/templates.controller.js';
 import { createVisit, deleteVisit, getVisit, listVisits, updateVisit, } from '../controllers/visits.controller.js';
 import { changePassword, login } from '../controllers/auth.controller.js';
@@ -45,6 +46,10 @@ router.post('/appointments', createAppointment);
 router.put('/appointments/:id', updateAppointment);
 router.post('/appointments/:id/cancel', cancelAppointment);
 router.delete('/appointments/:id', deleteAppointment);
+router.get('/doctor-schedules', listDoctorSchedules);
+router.post('/doctor-schedules', createDoctorSchedule);
+router.put('/doctor-schedules/:id', updateDoctorSchedule);
+router.delete('/doctor-schedules/:id', deleteDoctorSchedule);
 router.get('/templates', listTemplates);
 router.get('/templates/:id', getTemplate);
 router.post('/templates', createTemplate);

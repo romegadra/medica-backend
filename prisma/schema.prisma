@@ -44,8 +44,20 @@ model Doctor {
   patients        Patient[]
   appointments    Appointment[]
   visits          VisitEntry[]
+  schedules       DoctorSchedule[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+}
+
+model DoctorSchedule {
+  id        String   @id @default(cuid())
+  doctorId  String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  doctor    Doctor   @relation(fields: [doctorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Receptionist {

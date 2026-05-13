@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
+import { getScheduleViolation } from '../utils/schedule.js'
 
 export async function listAppointments(_req: Request, res: Response) {
   const appointments = await prisma.appointment.findMany({
@@ -19,12 +20,20 @@ export async function getAppointment(req: Request, res: Response) {
 }
 
 export async function createAppointment(req: Request, res: Response) {
+  const start = new Date(req.body.start)
+  const end = new Date(req.body.end)
+  const scheduleViolation = await getScheduleViolation(req.body.doctorId, start, end)
+  if (scheduleViolation) {
+    res.status(409).json({ error: scheduleViolation })
+    return
+  }
+
   const conflict = await prisma.appointment.findFirst({
     where: {
       doctorId: req.body.doctorId,
       status: { not: 'cancelled' },
-      start: { lt: new Date(req.body.end) },
-      end: { gt: new Date(req.body.start) },
+      start: { lt: end },
+      end: { gt: start },
     },
   })
   if (conflict) {
@@ -36,8 +45,8 @@ export async function createAppointment(req: Request, res: Response) {
       doctorId: req.body.doctorId,
       patientId: req.body.patientId,
       title: req.body.title,
-      start: new Date(req.body.start),
-      end: new Date(req.body.end),
+      start,
+      end,
       status: req.body.status ?? 'scheduled',
       notes: req.body.notes ?? null,
       paymentType: req.body.paymentType ?? null,
@@ -59,6 +68,12 @@ export async function updateAppointment(req: Request, res: Response) {
   const doctorId = req.body.doctorId ?? existing.doctorId
   const status = req.body.status ?? existing.status
   if (status !== 'cancelled') {
+    const scheduleViolation = await getScheduleViolation(doctorId, start, end)
+    if (scheduleViolation) {
+      res.status(409).json({ error: scheduleViolation })
+      return
+    }
+
     const conflict = await prisma.appointment.findFirst({
       where: {
         id: { not: getIdParam(req) },
