@@ -11,6 +11,7 @@ import { createVisit, deleteVisit, getVisit, listVisits, updateVisit, } from '..
 import { changePassword, login } from '../controllers/auth.controller.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createSpecialty, deleteSpecialty, getSpecialty, listSpecialties, updateSpecialty, } from '../controllers/specialties.controller.js';
+import { getSettings, updateSettings } from '../controllers/settings.controller.js';
 export const router = Router();
 router.post('/auth/login', login);
 router.use(requireAuth);
@@ -20,6 +21,8 @@ router.post('/users/admins', requireRole(['admin', 'superadmin']), createAdminUs
 router.put('/users/admins/:id', requireRole(['admin', 'superadmin']), updateAdminUser);
 router.post('/users/admins/:id/reset-password', requireRole(['admin', 'superadmin']), resetAdminUserPassword);
 router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteAdminUser);
+router.get('/settings', getSettings);
+router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings);
 router.get('/specialties', listSpecialties);
 router.get('/specialties/:id', getSpecialty);
 router.post('/specialties', createSpecialty);

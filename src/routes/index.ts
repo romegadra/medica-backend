@@ -73,6 +73,7 @@ import {
   listSpecialties,
   updateSpecialty,
 } from '../controllers/specialties.controller.js'
+import { getSettings, updateSettings } from '../controllers/settings.controller.js'
 
 export const router = Router()
 
@@ -89,6 +90,9 @@ router.post(
   resetAdminUserPassword,
 )
 router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteAdminUser)
+
+router.get('/settings', getSettings)
+router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings)
 
 router.get('/specialties', listSpecialties)
 router.get('/specialties/:id', getSpecialty)
