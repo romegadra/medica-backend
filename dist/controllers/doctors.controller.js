@@ -1,8 +1,15 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
-export async function listDoctors(_req, res) {
-    const doctors = await prisma.doctor.findMany({ orderBy: { name: 'asc' } });
+export async function listDoctors(req, res) {
+    const where = {};
+    if (req.auth?.role === 'doctor') {
+        where.id = req.auth.doctorId ?? '__none__';
+    }
+    else if (req.auth?.unitId) {
+        where.unitId = req.auth.unitId;
+    }
+    const doctors = await prisma.doctor.findMany({ where, orderBy: { name: 'asc' } });
     res.json(doctors);
 }
 export async function getDoctor(req, res) {

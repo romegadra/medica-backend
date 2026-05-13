@@ -44,6 +44,13 @@ import {
   updateDoctorSchedule,
 } from '../controllers/doctorSchedules.controller.js'
 import {
+  createAdminUser,
+  deleteAdminUser,
+  listAdminUsers,
+  resetAdminUserPassword,
+  updateAdminUser,
+} from '../controllers/users.controller.js'
+import {
   createTemplate,
   deleteTemplate,
   getTemplate,
@@ -70,7 +77,18 @@ import {
 export const router = Router()
 
 router.post('/auth/login', login)
-router.post('/auth/change-password', requireAuth, changePassword)
+router.use(requireAuth)
+router.post('/auth/change-password', changePassword)
+
+router.get('/users/admins', requireRole(['admin', 'superadmin']), listAdminUsers)
+router.post('/users/admins', requireRole(['admin', 'superadmin']), createAdminUser)
+router.put('/users/admins/:id', requireRole(['admin', 'superadmin']), updateAdminUser)
+router.post(
+  '/users/admins/:id/reset-password',
+  requireRole(['admin', 'superadmin']),
+  resetAdminUserPassword,
+)
+router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteAdminUser)
 
 router.get('/specialties', listSpecialties)
 router.get('/specialties/:id', getSpecialty)
@@ -87,7 +105,7 @@ router.delete('/units/:id', deleteUnit)
 router.get('/doctors', listDoctors)
 router.get('/doctors/:id', getDoctor)
 router.post('/doctors', createDoctor)
-router.post('/doctors/:id/reset-password', requireAuth, requireRole(['admin']), resetDoctorPassword)
+router.post('/doctors/:id/reset-password', requireRole(['admin', 'superadmin']), resetDoctorPassword)
 router.put('/doctors/:id', updateDoctor)
 router.delete('/doctors/:id', deleteDoctor)
 
@@ -96,8 +114,7 @@ router.get('/receptionists/:id', getReceptionist)
 router.post('/receptionists', createReceptionist)
 router.post(
   '/receptionists/:id/reset-password',
-  requireAuth,
-  requireRole(['admin']),
+  requireRole(['admin', 'superadmin']),
   resetReceptionistPassword,
 )
 router.put('/receptionists/:id', updateReceptionist)

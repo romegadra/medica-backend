@@ -1,7 +1,18 @@
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
-export async function listPatients(_req, res) {
-    const patients = await prisma.patient.findMany({ orderBy: { name: 'asc' } });
+export async function listPatients(req, res) {
+    const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined;
+    const where = {};
+    if (requestedDoctorId) {
+        where.doctorId = requestedDoctorId;
+    }
+    if (req.auth?.role === 'doctor') {
+        where.doctorId = req.auth.doctorId ?? '__none__';
+    }
+    else if (req.auth?.unitId) {
+        where.doctor = { unitId: req.auth.unitId };
+    }
+    const patients = await prisma.patient.findMany({ where, orderBy: { name: 'asc' } });
     res.json(patients);
 }
 export async function getPatient(req, res) {
@@ -13,6 +24,19 @@ export async function getPatient(req, res) {
     res.json(patient);
 }
 export async function createPatient(req, res) {
+    const doctor = await prisma.doctor.findUnique({
+        where: { id: req.body.doctorId },
+        select: { id: true, unitId: true },
+    });
+    if (!doctor) {
+        res.status(400).json({ error: 'Doctor not found' });
+        return;
+    }
+    if ((req.auth?.role === 'doctor' && req.auth.doctorId !== doctor.id) ||
+        (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== doctor.unitId)) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
     const patient = await prisma.patient.create({
         data: {
             doctorId: req.body.doctorId,

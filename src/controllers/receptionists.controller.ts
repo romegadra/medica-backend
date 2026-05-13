@@ -1,10 +1,18 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
-export async function listReceptionists(_req: Request, res: Response) {
-  const receptionists = await prisma.receptionist.findMany({ orderBy: { name: 'asc' } })
+export async function listReceptionists(req: Request, res: Response) {
+  const where: Prisma.ReceptionistWhereInput = {}
+  if (req.auth?.role === 'receptionist') {
+    where.id = req.auth.receptionistId ?? '__none__'
+  } else if (req.auth?.unitId) {
+    where.unitId = req.auth.unitId
+  }
+
+  const receptionists = await prisma.receptionist.findMany({ where, orderBy: { name: 'asc' } })
   res.json(receptionists)
 }
 

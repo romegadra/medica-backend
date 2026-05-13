@@ -1,10 +1,18 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
-export async function listDoctors(_req: Request, res: Response) {
-  const doctors = await prisma.doctor.findMany({ orderBy: { name: 'asc' } })
+export async function listDoctors(req: Request, res: Response) {
+  const where: Prisma.DoctorWhereInput = {}
+  if (req.auth?.role === 'doctor') {
+    where.id = req.auth.doctorId ?? '__none__'
+  } else if (req.auth?.unitId) {
+    where.unitId = req.auth.unitId
+  }
+
+  const doctors = await prisma.doctor.findMany({ where, orderBy: { name: 'asc' } })
   res.json(doctors)
 }
 

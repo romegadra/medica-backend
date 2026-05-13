@@ -1,8 +1,21 @@
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
 import { getScheduleViolation } from '../utils/schedule.js';
-export async function listAppointments(_req, res) {
+import { notifyAppointment } from '../services/notifications.service.js';
+export async function listAppointments(req, res) {
+    const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined;
+    const where = {};
+    if (requestedDoctorId) {
+        where.doctorId = requestedDoctorId;
+    }
+    if (req.auth?.role === 'doctor') {
+        where.doctorId = req.auth.doctorId ?? '__none__';
+    }
+    else if (req.auth?.unitId) {
+        where.doctor = { unitId: req.auth.unitId };
+    }
     const appointments = await prisma.appointment.findMany({
+        where,
         orderBy: { start: 'asc' },
     });
     res.json(appointments);
@@ -18,6 +31,19 @@ export async function getAppointment(req, res) {
 export async function createAppointment(req, res) {
     const start = new Date(req.body.start);
     const end = new Date(req.body.end);
+    const patient = await prisma.patient.findFirst({
+        where: { id: req.body.patientId, doctorId: req.body.doctorId },
+        include: { doctor: { select: { unitId: true } } },
+    });
+    if (!patient) {
+        res.status(400).json({ error: 'Patient not found for selected doctor' });
+        return;
+    }
+    if ((req.auth?.role === 'doctor' && req.auth.doctorId !== req.body.doctorId) ||
+        (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== patient.doctor.unitId)) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
     const scheduleViolation = await getScheduleViolation(req.body.doctorId, start, end);
     if (scheduleViolation) {
         res.status(409).json({ error: scheduleViolation });
@@ -49,6 +75,7 @@ export async function createAppointment(req, res) {
             cancelledAt: req.body.status === 'cancelled' ? new Date() : null,
         },
     });
+    void notifyAppointment('created', appointment.id);
     res.status(201).json(appointment);
 }
 export async function updateAppointment(req, res) {
@@ -100,6 +127,12 @@ export async function updateAppointment(req, res) {
                     : existing.cancelledAt,
         },
     });
+    if (appointment.status === 'cancelled') {
+        void notifyAppointment('cancelled', appointment.id);
+    }
+    else {
+        void notifyAppointment('updated', appointment.id);
+    }
     res.json(appointment);
 }
 export async function cancelAppointment(req, res) {
@@ -112,6 +145,7 @@ export async function cancelAppointment(req, res) {
                 cancelledAt: new Date(),
             },
         });
+        void notifyAppointment('cancelled', appointment.id);
         res.json(appointment);
     }
     catch {

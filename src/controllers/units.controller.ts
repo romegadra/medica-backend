@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
-export async function listUnits(_req: Request, res: Response) {
-  const units = await prisma.unit.findMany({ orderBy: { name: 'asc' } })
+export async function listUnits(req: Request, res: Response) {
+  const where: Prisma.UnitWhereInput = req.auth?.unitId ? { id: req.auth.unitId } : {}
+  const units = await prisma.unit.findMany({ where, orderBy: { name: 'asc' } })
   res.json(units)
 }
 

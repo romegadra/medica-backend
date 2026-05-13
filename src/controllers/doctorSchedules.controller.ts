@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
@@ -25,8 +26,18 @@ function isValidSchedule(body: {
 
 export async function listDoctorSchedules(req: Request, res: Response) {
   const doctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
+  const where: Prisma.DoctorScheduleWhereInput = {}
+  if (doctorId) {
+    where.doctorId = doctorId
+  }
+  if (req.auth?.role === 'doctor') {
+    where.doctorId = req.auth.doctorId ?? '__none__'
+  } else if (req.auth?.unitId) {
+    where.doctor = { unitId: req.auth.unitId }
+  }
+
   const schedules = await prisma.doctorSchedule.findMany({
-    where: doctorId ? { doctorId } : undefined,
+    where,
     orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }],
   })
   res.json(schedules)
