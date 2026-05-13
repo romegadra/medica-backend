@@ -26,11 +26,18 @@ export async function getDoctor(req: Request, res: Response) {
 }
 
 export async function createDoctor(req: Request, res: Response) {
-  const email = req.body.email as string | undefined
+  const email = typeof req.body.email === 'string' ? req.body.email.trim() : undefined
   if (!email) {
     res.status(400).json({ error: 'email is required' })
     return
   }
+  const existingUser = await prisma.user.findUnique({ where: { email } })
+  const existingDoctor = await prisma.doctor.findFirst({ where: { email } })
+  if (existingUser || existingDoctor) {
+    res.status(409).json({ error: 'Email is already used' })
+    return
+  }
+
   const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Temp1234'
   const hash = await bcrypt.hash(defaultPassword, 10)
   const doctor = await prisma.$transaction(async (tx) => {
@@ -64,6 +71,28 @@ export async function createDoctor(req: Request, res: Response) {
 export async function updateDoctor(req: Request, res: Response) {
   try {
     const doctorId = getIdParam(req)
+    const existingDoctor = await prisma.doctor.findUnique({ where: { id: doctorId } })
+    if (!existingDoctor) {
+      res.status(404).json({ error: 'Doctor not found' })
+      return
+    }
+    const nextEmail =
+      typeof req.body.email === 'string' ? req.body.email.trim() : existingDoctor.email
+    if (!nextEmail) {
+      res.status(400).json({ error: 'email is required' })
+      return
+    }
+    if (nextEmail !== existingDoctor.email) {
+      const emailUser = await prisma.user.findUnique({ where: { email: nextEmail } })
+      const emailDoctor = await prisma.doctor.findFirst({
+        where: { email: nextEmail, id: { not: doctorId } },
+      })
+      if ((emailUser && emailUser.doctorId !== doctorId) || emailDoctor) {
+        res.status(409).json({ error: 'Email is already used' })
+        return
+      }
+    }
+
     const doctor = await prisma.$transaction(async (tx) => {
       const existing = await tx.doctor.findUnique({ where: { id: doctorId } })
       if (!existing) {
@@ -73,7 +102,7 @@ export async function updateDoctor(req: Request, res: Response) {
         where: { id: doctorId },
         data: {
           name: req.body.name,
-          email: req.body.email ?? existing.email,
+          email: nextEmail,
           unitId: req.body.unitId,
           specialtyId: req.body.specialtyId ?? null,
           phone: req.body.phone,
@@ -82,18 +111,18 @@ export async function updateDoctor(req: Request, res: Response) {
           canManageVisits: req.body.canManageVisits,
         },
       })
-      if (req.body.email && req.body.email !== existing.email) {
+      if (nextEmail !== existing.email) {
         if (existing.email) {
           await tx.user.updateMany({
             where: { doctorId: doctorId },
-            data: { email: req.body.email, unitId: updated.unitId },
+            data: { email: nextEmail, unitId: updated.unitId },
           })
         } else {
           const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Temp1234'
           const hash = await bcrypt.hash(defaultPassword, 10)
           await tx.user.create({
             data: {
-              email: req.body.email,
+              email: nextEmail,
               password: hash,
               role: 'doctor',
               doctorId: doctorId,
