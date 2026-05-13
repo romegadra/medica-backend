@@ -6,6 +6,7 @@ declare module 'express-serve-static-core' {
       userId: string
       role: string
       doctorId?: string
+      receptionistId?: string
       unitId?: string
     }
   }

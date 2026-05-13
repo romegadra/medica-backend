@@ -40,6 +40,7 @@ export async function createReceptionist(req: Request, res: Response) {
         email,
         password: hash,
         role: 'receptionist',
+        receptionistId: created.id,
         unitId: created.unitId,
         mustChangePassword: true,
       },
@@ -71,7 +72,7 @@ export async function updateReceptionist(req: Request, res: Response) {
         if (existing.email) {
           await tx.user.updateMany({
             where: { email: existing.email, role: 'receptionist' },
-            data: { email: req.body.email, unitId: updated.unitId },
+            data: { email: req.body.email, receptionistId, unitId: updated.unitId },
           })
         } else {
           const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Temp1234'
@@ -81,6 +82,7 @@ export async function updateReceptionist(req: Request, res: Response) {
               email: req.body.email,
               password: hash,
               role: 'receptionist',
+              receptionistId,
               unitId: updated.unitId,
               mustChangePassword: true,
             },
@@ -89,7 +91,7 @@ export async function updateReceptionist(req: Request, res: Response) {
       } else if (req.body.unitId && existing.email) {
         await tx.user.updateMany({
           where: { email: existing.email, role: 'receptionist' },
-          data: { unitId: updated.unitId },
+          data: { receptionistId, unitId: updated.unitId },
         })
       }
       return updated
@@ -102,6 +104,51 @@ export async function updateReceptionist(req: Request, res: Response) {
   } catch {
     res.status(404).json({ error: 'Receptionist not found' })
   }
+}
+
+export async function resetReceptionistPassword(req: Request, res: Response) {
+  const receptionist = await prisma.receptionist.findUnique({ where: { id: getIdParam(req) } })
+  if (!receptionist) {
+    res.status(404).json({ error: 'Receptionist not found' })
+    return
+  }
+  if (!receptionist.email) {
+    res.status(400).json({ error: 'Receptionist does not have an email' })
+    return
+  }
+
+  const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Temp1234'
+  const hash = await bcrypt.hash(defaultPassword, 10)
+  const user = await prisma.user.findUnique({ where: { email: receptionist.email } })
+  if (user && user.role !== 'receptionist') {
+    res.status(409).json({ error: 'Email is already used by another role' })
+    return
+  }
+
+  if (user) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hash,
+        receptionistId: receptionist.id,
+        unitId: receptionist.unitId,
+        mustChangePassword: true,
+      },
+    })
+  } else {
+    await prisma.user.create({
+      data: {
+        email: receptionist.email,
+        password: hash,
+        role: 'receptionist',
+        receptionistId: receptionist.id,
+        unitId: receptionist.unitId,
+        mustChangePassword: true,
+      },
+    })
+  }
+
+  res.json({ email: receptionist.email, mustChangePassword: true })
 }
 
 export async function deleteReceptionist(req: Request, res: Response) {

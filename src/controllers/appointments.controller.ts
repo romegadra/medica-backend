@@ -22,6 +22,7 @@ export async function createAppointment(req: Request, res: Response) {
   const conflict = await prisma.appointment.findFirst({
     where: {
       doctorId: req.body.doctorId,
+      status: { not: 'cancelled' },
       start: { lt: new Date(req.body.end) },
       end: { gt: new Date(req.body.start) },
     },
@@ -37,6 +38,11 @@ export async function createAppointment(req: Request, res: Response) {
       title: req.body.title,
       start: new Date(req.body.start),
       end: new Date(req.body.end),
+      status: req.body.status ?? 'scheduled',
+      notes: req.body.notes ?? null,
+      paymentType: req.body.paymentType ?? null,
+      cancellationReason: req.body.cancellationReason ?? null,
+      cancelledAt: req.body.status === 'cancelled' ? new Date() : null,
     },
   })
   res.status(201).json(appointment)
@@ -51,17 +57,21 @@ export async function updateAppointment(req: Request, res: Response) {
   const start = req.body.start ? new Date(req.body.start) : existing.start
   const end = req.body.end ? new Date(req.body.end) : existing.end
   const doctorId = req.body.doctorId ?? existing.doctorId
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      id: { not: getIdParam(req) },
-      doctorId,
-      start: { lt: end },
-      end: { gt: start },
-    },
-  })
-  if (conflict) {
-    res.status(409).json({ error: 'Overlap with existing appointment' })
-    return
+  const status = req.body.status ?? existing.status
+  if (status !== 'cancelled') {
+    const conflict = await prisma.appointment.findFirst({
+      where: {
+        id: { not: getIdParam(req) },
+        doctorId,
+        status: { not: 'cancelled' },
+        start: { lt: end },
+        end: { gt: start },
+      },
+    })
+    if (conflict) {
+      res.status(409).json({ error: 'Overlap with existing appointment' })
+      return
+    }
   }
   const appointment = await prisma.appointment.update({
     where: { id: getIdParam(req) },
@@ -71,9 +81,35 @@ export async function updateAppointment(req: Request, res: Response) {
       title: req.body.title,
       start,
       end,
+      status,
+      notes: req.body.notes ?? existing.notes,
+      paymentType: req.body.paymentType ?? existing.paymentType,
+      cancellationReason: req.body.cancellationReason ?? existing.cancellationReason,
+      cancelledAt:
+        req.body.status === 'cancelled'
+          ? (existing.cancelledAt ?? new Date())
+          : req.body.status && req.body.status !== 'cancelled'
+            ? null
+            : existing.cancelledAt,
     },
   })
   res.json(appointment)
+}
+
+export async function cancelAppointment(req: Request, res: Response) {
+  try {
+    const appointment = await prisma.appointment.update({
+      where: { id: getIdParam(req) },
+      data: {
+        status: 'cancelled',
+        cancellationReason: req.body.reason ?? null,
+        cancelledAt: new Date(),
+      },
+    })
+    res.json(appointment)
+  } catch {
+    res.status(404).json({ error: 'Appointment not found' })
+  }
 }
 
 export async function deleteAppointment(req: Request, res: Response) {

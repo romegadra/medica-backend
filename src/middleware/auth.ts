@@ -5,6 +5,7 @@ type AuthPayload = {
   userId: string
   role: string
   doctorId?: string
+  receptionistId?: string
   unitId?: string
 }
 

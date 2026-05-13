@@ -112,6 +112,51 @@ export async function updateDoctor(req: Request, res: Response) {
   }
 }
 
+export async function resetDoctorPassword(req: Request, res: Response) {
+  const doctor = await prisma.doctor.findUnique({ where: { id: getIdParam(req) } })
+  if (!doctor) {
+    res.status(404).json({ error: 'Doctor not found' })
+    return
+  }
+  if (!doctor.email) {
+    res.status(400).json({ error: 'Doctor does not have an email' })
+    return
+  }
+
+  const defaultPassword = process.env.DEFAULT_USER_PASSWORD || 'Temp1234'
+  const hash = await bcrypt.hash(defaultPassword, 10)
+  const user = await prisma.user.findUnique({ where: { email: doctor.email } })
+  if (user && user.role !== 'doctor') {
+    res.status(409).json({ error: 'Email is already used by another role' })
+    return
+  }
+
+  if (user) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hash,
+        doctorId: doctor.id,
+        unitId: doctor.unitId,
+        mustChangePassword: true,
+      },
+    })
+  } else {
+    await prisma.user.create({
+      data: {
+        email: doctor.email,
+        password: hash,
+        role: 'doctor',
+        doctorId: doctor.id,
+        unitId: doctor.unitId,
+        mustChangePassword: true,
+      },
+    })
+  }
+
+  res.json({ email: doctor.email, mustChangePassword: true })
+}
+
 export async function deleteDoctor(req: Request, res: Response) {
   const doctor = await prisma.doctor.findUnique({ where: { id: getIdParam(req) } })
   if (!doctor) {
