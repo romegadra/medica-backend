@@ -2,7 +2,7 @@ import { prisma } from '../prisma.js'
 
 const timeZone = process.env.APP_TIME_ZONE || 'America/Monterrey'
 
-function localParts(date: Date) {
+export function localParts(date: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -29,16 +29,46 @@ function timeToMinutes(value: string) {
   return hour * 60 + minute
 }
 
+function overlapsMinutes(
+  startMinutes: number,
+  endMinutes: number,
+  blockStartTime: string | null,
+  blockEndTime: string | null,
+) {
+  if (!blockStartTime || !blockEndTime) return false
+  return startMinutes < timeToMinutes(blockEndTime) && timeToMinutes(blockStartTime) < endMinutes
+}
+
 export async function getScheduleViolation(doctorId: string, start: Date, end: Date) {
   const blocked = await prisma.doctorBlockedTime.findFirst({
     where: {
       doctorId,
+      recurrenceType: 'date',
       start: { lt: end },
       end: { gt: start },
     },
   })
   if (blocked) {
     return 'La cita se cruza con un bloqueo del doctor.'
+  }
+
+  const localStart = localParts(start)
+  const localEnd = localParts(end)
+  if (localStart.dayOfWeek === localEnd.dayOfWeek) {
+    const recurringBlocks = await prisma.doctorBlockedTime.findMany({
+      where: {
+        doctorId,
+        recurrenceType: 'weekly',
+        dayOfWeek: localStart.dayOfWeek,
+      },
+    })
+    if (
+      recurringBlocks.some((block) =>
+        overlapsMinutes(localStart.minuteOfDay, localEnd.minuteOfDay, block.startTime, block.endTime),
+      )
+    ) {
+      return 'La cita se cruza con un bloqueo recurrente del doctor.'
+    }
   }
 
   const schedules = await prisma.doctorSchedule.findMany({
@@ -48,8 +78,6 @@ export async function getScheduleViolation(doctorId: string, start: Date, end: D
     return null
   }
 
-  const localStart = localParts(start)
-  const localEnd = localParts(end)
   if (localStart.dayOfWeek !== localEnd.dayOfWeek) {
     return 'La cita debe terminar el mismo dia.'
   }

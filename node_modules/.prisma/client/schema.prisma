@@ -62,14 +62,18 @@ model DoctorSchedule {
 }
 
 model DoctorBlockedTime {
-  id        String   @id @default(cuid())
-  doctorId  String
-  start     DateTime
-  end       DateTime
-  reason    String?
-  doctor    Doctor   @relation(fields: [doctorId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  doctorId       String
+  start          DateTime
+  end            DateTime
+  reason         String?
+  recurrenceType String   @default("date")
+  dayOfWeek      Int?
+  startTime      String?
+  endTime        String?
+  doctor         Doctor   @relation(fields: [doctorId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Receptionist {
