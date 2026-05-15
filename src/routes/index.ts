@@ -44,6 +44,11 @@ import {
   updateDoctorSchedule,
 } from '../controllers/doctorSchedules.controller.js'
 import {
+  createDoctorBlockedTime,
+  deleteDoctorBlockedTime,
+  listDoctorBlockedTimes,
+} from '../controllers/doctorBlockedTimes.controller.js'
+import {
   createAdminUser,
   deleteAdminUser,
   listAdminUsers,
@@ -141,6 +146,10 @@ router.get('/doctor-schedules', listDoctorSchedules)
 router.post('/doctor-schedules', createDoctorSchedule)
 router.put('/doctor-schedules/:id', updateDoctorSchedule)
 router.delete('/doctor-schedules/:id', deleteDoctorSchedule)
+
+router.get('/doctor-blocks', listDoctorBlockedTimes)
+router.post('/doctor-blocks', createDoctorBlockedTime)
+router.delete('/doctor-blocks/:id', deleteDoctorBlockedTime)
 
 router.get('/templates', listTemplates)
 router.get('/templates/:id', getTemplate)

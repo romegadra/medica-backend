@@ -5,6 +5,7 @@ import { createReceptionist, deleteReceptionist, getReceptionist, listReceptioni
 import { createPatient, deletePatient, getPatient, listPatients, updatePatient, } from '../controllers/patients.controller.js';
 import { cancelAppointment, createAppointment, deleteAppointment, getAppointment, listAppointments, updateAppointment, } from '../controllers/appointments.controller.js';
 import { createDoctorSchedule, deleteDoctorSchedule, listDoctorSchedules, updateDoctorSchedule, } from '../controllers/doctorSchedules.controller.js';
+import { createDoctorBlockedTime, deleteDoctorBlockedTime, listDoctorBlockedTimes, } from '../controllers/doctorBlockedTimes.controller.js';
 import { createAdminUser, deleteAdminUser, listAdminUsers, resetAdminUserPassword, updateAdminUser, } from '../controllers/users.controller.js';
 import { createTemplate, deleteTemplate, getTemplate, listTemplates, updateTemplate, } from '../controllers/templates.controller.js';
 import { createVisit, deleteVisit, getVisit, listVisits, updateVisit, } from '../controllers/visits.controller.js';
@@ -60,6 +61,9 @@ router.get('/doctor-schedules', listDoctorSchedules);
 router.post('/doctor-schedules', createDoctorSchedule);
 router.put('/doctor-schedules/:id', updateDoctorSchedule);
 router.delete('/doctor-schedules/:id', deleteDoctorSchedule);
+router.get('/doctor-blocks', listDoctorBlockedTimes);
+router.post('/doctor-blocks', createDoctorBlockedTime);
+router.delete('/doctor-blocks/:id', deleteDoctorBlockedTime);
 router.get('/templates', listTemplates);
 router.get('/templates/:id', getTemplate);
 router.post('/templates', createTemplate);

@@ -30,6 +30,17 @@ function timeToMinutes(value: string) {
 }
 
 export async function getScheduleViolation(doctorId: string, start: Date, end: Date) {
+  const blocked = await prisma.doctorBlockedTime.findFirst({
+    where: {
+      doctorId,
+      start: { lt: end },
+      end: { gt: start },
+    },
+  })
+  if (blocked) {
+    return 'La cita se cruza con un bloqueo del doctor.'
+  }
+
   const schedules = await prisma.doctorSchedule.findMany({
     where: { doctorId },
   })
