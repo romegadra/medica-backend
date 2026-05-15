@@ -44,6 +44,18 @@ import {
   updateDoctorSchedule,
 } from '../controllers/doctorSchedules.controller.js'
 import {
+  createDoctorBlockedTime,
+  deleteDoctorBlockedTime,
+  listDoctorBlockedTimes,
+} from '../controllers/doctorBlockedTimes.controller.js'
+import {
+  createAdminUser,
+  deleteAdminUser,
+  listAdminUsers,
+  resetAdminUserPassword,
+  updateAdminUser,
+} from '../controllers/users.controller.js'
+import {
   createTemplate,
   deleteTemplate,
   getTemplate,
@@ -66,11 +78,26 @@ import {
   listSpecialties,
   updateSpecialty,
 } from '../controllers/specialties.controller.js'
+import { getSettings, updateSettings } from '../controllers/settings.controller.js'
 
 export const router = Router()
 
 router.post('/auth/login', login)
-router.post('/auth/change-password', requireAuth, changePassword)
+router.use(requireAuth)
+router.post('/auth/change-password', changePassword)
+
+router.get('/users/admins', requireRole(['admin', 'superadmin']), listAdminUsers)
+router.post('/users/admins', requireRole(['admin', 'superadmin']), createAdminUser)
+router.put('/users/admins/:id', requireRole(['admin', 'superadmin']), updateAdminUser)
+router.post(
+  '/users/admins/:id/reset-password',
+  requireRole(['admin', 'superadmin']),
+  resetAdminUserPassword,
+)
+router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteAdminUser)
+
+router.get('/settings', getSettings)
+router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings)
 
 router.get('/specialties', listSpecialties)
 router.get('/specialties/:id', getSpecialty)
@@ -87,7 +114,7 @@ router.delete('/units/:id', deleteUnit)
 router.get('/doctors', listDoctors)
 router.get('/doctors/:id', getDoctor)
 router.post('/doctors', createDoctor)
-router.post('/doctors/:id/reset-password', requireAuth, requireRole(['admin']), resetDoctorPassword)
+router.post('/doctors/:id/reset-password', requireRole(['admin', 'superadmin']), resetDoctorPassword)
 router.put('/doctors/:id', updateDoctor)
 router.delete('/doctors/:id', deleteDoctor)
 
@@ -96,8 +123,7 @@ router.get('/receptionists/:id', getReceptionist)
 router.post('/receptionists', createReceptionist)
 router.post(
   '/receptionists/:id/reset-password',
-  requireAuth,
-  requireRole(['admin']),
+  requireRole(['admin', 'superadmin']),
   resetReceptionistPassword,
 )
 router.put('/receptionists/:id', updateReceptionist)
@@ -120,6 +146,10 @@ router.get('/doctor-schedules', listDoctorSchedules)
 router.post('/doctor-schedules', createDoctorSchedule)
 router.put('/doctor-schedules/:id', updateDoctorSchedule)
 router.delete('/doctor-schedules/:id', deleteDoctorSchedule)
+
+router.get('/doctor-blocks', listDoctorBlockedTimes)
+router.post('/doctor-blocks', createDoctorBlockedTime)
+router.delete('/doctor-blocks/:id', deleteDoctorBlockedTime)
 
 router.get('/templates', listTemplates)
 router.get('/templates/:id', getTemplate)

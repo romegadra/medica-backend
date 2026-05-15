@@ -1,9 +1,11 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
-export async function listUnits(_req: Request, res: Response) {
-  const units = await prisma.unit.findMany({ orderBy: { name: 'asc' } })
+export async function listUnits(req: Request, res: Response) {
+  const where: Prisma.UnitWhereInput = req.auth?.unitId ? { id: req.auth.unitId } : {}
+  const units = await prisma.unit.findMany({ where, orderBy: { name: 'asc' } })
   res.json(units)
 }
 
@@ -62,6 +64,7 @@ export async function deleteUnit(req: Request, res: Response) {
       await tx.appointment.deleteMany({ where: { doctorId: { in: doctorIds } } })
       await tx.patient.deleteMany({ where: { doctorId: { in: doctorIds } } })
       await tx.doctorSchedule.deleteMany({ where: { doctorId: { in: doctorIds } } })
+      await tx.doctorBlockedTime.deleteMany({ where: { doctorId: { in: doctorIds } } })
       await tx.doctor.deleteMany({ where: { id: { in: doctorIds } } })
     }
     await tx.receptionist.deleteMany({ where: { unitId: unit.id } })

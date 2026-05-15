@@ -45,6 +45,7 @@ model Doctor {
   appointments    Appointment[]
   visits          VisitEntry[]
   schedules       DoctorSchedule[]
+  blockedTimes    DoctorBlockedTime[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 }
@@ -58,6 +59,21 @@ model DoctorSchedule {
   doctor    Doctor   @relation(fields: [doctorId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model DoctorBlockedTime {
+  id             String   @id @default(cuid())
+  doctorId       String
+  start          DateTime
+  end            DateTime
+  reason         String?
+  recurrenceType String   @default("date")
+  dayOfWeek      Int?
+  startTime      String?
+  endTime        String?
+  doctor         Doctor   @relation(fields: [doctorId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Receptionist {
@@ -94,6 +110,7 @@ model Appointment {
   start              DateTime
   end                DateTime
   status             String   @default("scheduled")
+  attended           Boolean  @default(false)
   notes              String?
   paymentType        String?
   cancellationReason String?
@@ -150,4 +167,14 @@ model User {
   mustChangePassword Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AppSettings {
+  id           String   @id @default("default")
+  startHour    Int      @default(8)
+  endHour      Int      @default(20)
+  slotMinutes  Int      @default(30)
+  allowOverlap Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

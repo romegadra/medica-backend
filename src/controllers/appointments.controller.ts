@@ -1,10 +1,26 @@
 import type { Request, Response } from 'express'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 import { getScheduleViolation } from '../utils/schedule.js'
+import { notifyAppointment } from '../services/notifications.service.js'
 
-export async function listAppointments(_req: Request, res: Response) {
+export async function listAppointments(req: Request, res: Response) {
+  const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
+  const where: Prisma.AppointmentWhereInput = {}
+
+  if (requestedDoctorId) {
+    where.doctorId = requestedDoctorId
+  }
+
+  if (req.auth?.role === 'doctor') {
+    where.doctorId = req.auth.doctorId ?? '__none__'
+  } else if (req.auth?.unitId) {
+    where.doctor = { unitId: req.auth.unitId }
+  }
+
   const appointments = await prisma.appointment.findMany({
+    where,
     orderBy: { start: 'asc' },
   })
   res.json(appointments)
@@ -22,6 +38,22 @@ export async function getAppointment(req: Request, res: Response) {
 export async function createAppointment(req: Request, res: Response) {
   const start = new Date(req.body.start)
   const end = new Date(req.body.end)
+  const patient = await prisma.patient.findFirst({
+    where: { id: req.body.patientId, doctorId: req.body.doctorId },
+    include: { doctor: { select: { unitId: true } } },
+  })
+  if (!patient) {
+    res.status(400).json({ error: 'Patient not found for selected doctor' })
+    return
+  }
+  if (
+    (req.auth?.role === 'doctor' && req.auth.doctorId !== req.body.doctorId) ||
+    (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== patient.doctor.unitId)
+  ) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+
   const scheduleViolation = await getScheduleViolation(req.body.doctorId, start, end)
   if (scheduleViolation) {
     res.status(409).json({ error: scheduleViolation })
@@ -48,12 +80,14 @@ export async function createAppointment(req: Request, res: Response) {
       start,
       end,
       status: req.body.status ?? 'scheduled',
+      attended: req.body.attended ?? false,
       notes: req.body.notes ?? null,
       paymentType: req.body.paymentType ?? null,
       cancellationReason: req.body.cancellationReason ?? null,
       cancelledAt: req.body.status === 'cancelled' ? new Date() : null,
     },
   })
+  void notifyAppointment('created', appointment.id)
   res.status(201).json(appointment)
 }
 
@@ -97,6 +131,7 @@ export async function updateAppointment(req: Request, res: Response) {
       start,
       end,
       status,
+      attended: req.body.attended ?? existing.attended,
       notes: req.body.notes ?? existing.notes,
       paymentType: req.body.paymentType ?? existing.paymentType,
       cancellationReason: req.body.cancellationReason ?? existing.cancellationReason,
@@ -108,6 +143,11 @@ export async function updateAppointment(req: Request, res: Response) {
             : existing.cancelledAt,
     },
   })
+  if (appointment.status === 'cancelled') {
+    void notifyAppointment('cancelled', appointment.id)
+  } else {
+    void notifyAppointment('updated', appointment.id)
+  }
   res.json(appointment)
 }
 
@@ -121,6 +161,7 @@ export async function cancelAppointment(req: Request, res: Response) {
         cancelledAt: new Date(),
       },
     })
+    void notifyAppointment('cancelled', appointment.id)
     res.json(appointment)
   } catch {
     res.status(404).json({ error: 'Appointment not found' })

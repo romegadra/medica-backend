@@ -1,7 +1,18 @@
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
-export async function listVisits(_req, res) {
-    const visits = await prisma.visitEntry.findMany({ orderBy: { date: 'desc' } });
+export async function listVisits(req, res) {
+    const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined;
+    const where = {};
+    if (requestedDoctorId) {
+        where.doctorId = requestedDoctorId;
+    }
+    if (req.auth?.role === 'doctor') {
+        where.doctorId = req.auth.doctorId ?? '__none__';
+    }
+    else if (req.auth?.unitId) {
+        where.doctor = { unitId: req.auth.unitId };
+    }
+    const visits = await prisma.visitEntry.findMany({ where, orderBy: { date: 'desc' } });
     res.json(visits);
 }
 export async function getVisit(req, res) {
