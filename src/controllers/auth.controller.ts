@@ -39,6 +39,7 @@ export function login(req: Request, res: Response) {
         userId: user.id,
         role: user.role,
         doctorId: user.doctorId ?? undefined,
+        receptionistId: user.receptionistId ?? undefined,
         unitId: user.unitId ?? undefined,
       },
       secret,
@@ -48,6 +49,7 @@ export function login(req: Request, res: Response) {
       token,
       role: user.role,
       doctorId: user.doctorId,
+      receptionistId: user.receptionistId,
       unitId: user.unitId,
       mustChangePassword: user.mustChangePassword,
     })

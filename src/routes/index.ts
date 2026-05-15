@@ -11,6 +11,7 @@ import {
   deleteDoctor,
   getDoctor,
   listDoctors,
+  resetDoctorPassword,
   updateDoctor,
 } from '../controllers/doctors.controller.js'
 import {
@@ -18,6 +19,7 @@ import {
   deleteReceptionist,
   getReceptionist,
   listReceptionists,
+  resetReceptionistPassword,
   updateReceptionist,
 } from '../controllers/receptionists.controller.js'
 import {
@@ -28,12 +30,19 @@ import {
   updatePatient,
 } from '../controllers/patients.controller.js'
 import {
+  cancelAppointment,
   createAppointment,
   deleteAppointment,
   getAppointment,
   listAppointments,
   updateAppointment,
 } from '../controllers/appointments.controller.js'
+import {
+  createDoctorSchedule,
+  deleteDoctorSchedule,
+  listDoctorSchedules,
+  updateDoctorSchedule,
+} from '../controllers/doctorSchedules.controller.js'
 import {
   createTemplate,
   deleteTemplate,
@@ -49,7 +58,7 @@ import {
   updateVisit,
 } from '../controllers/visits.controller.js'
 import { changePassword, login } from '../controllers/auth.controller.js'
-import { requireAuth } from '../middleware/auth.js'
+import { requireAuth, requireRole } from '../middleware/auth.js'
 import {
   createSpecialty,
   deleteSpecialty,
@@ -78,12 +87,19 @@ router.delete('/units/:id', deleteUnit)
 router.get('/doctors', listDoctors)
 router.get('/doctors/:id', getDoctor)
 router.post('/doctors', createDoctor)
+router.post('/doctors/:id/reset-password', requireAuth, requireRole(['admin']), resetDoctorPassword)
 router.put('/doctors/:id', updateDoctor)
 router.delete('/doctors/:id', deleteDoctor)
 
 router.get('/receptionists', listReceptionists)
 router.get('/receptionists/:id', getReceptionist)
 router.post('/receptionists', createReceptionist)
+router.post(
+  '/receptionists/:id/reset-password',
+  requireAuth,
+  requireRole(['admin']),
+  resetReceptionistPassword,
+)
 router.put('/receptionists/:id', updateReceptionist)
 router.delete('/receptionists/:id', deleteReceptionist)
 
@@ -97,7 +113,13 @@ router.get('/appointments', listAppointments)
 router.get('/appointments/:id', getAppointment)
 router.post('/appointments', createAppointment)
 router.put('/appointments/:id', updateAppointment)
+router.post('/appointments/:id/cancel', cancelAppointment)
 router.delete('/appointments/:id', deleteAppointment)
+
+router.get('/doctor-schedules', listDoctorSchedules)
+router.post('/doctor-schedules', createDoctorSchedule)
+router.put('/doctor-schedules/:id', updateDoctorSchedule)
+router.delete('/doctor-schedules/:id', deleteDoctorSchedule)
 
 router.get('/templates', listTemplates)
 router.get('/templates/:id', getTemplate)
