@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
+import { writeAuditLog } from '../services/audit.service.js'
 
 export async function listPatients(req: Request, res: Response) {
   const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
@@ -56,11 +57,24 @@ export async function createPatient(req: Request, res: Response) {
       historyDate: req.body.historyDate,
     },
   })
+  writeAuditLog(req, {
+    action: 'created',
+    entityType: 'patient',
+    entityId: patient.id,
+    summary: `Paciente creado: ${patient.name}`,
+    unitId: doctor.unitId,
+    doctorId: patient.doctorId,
+    after: patient,
+  })
   res.status(201).json(patient)
 }
 
 export async function updatePatient(req: Request, res: Response) {
   try {
+    const existing = await prisma.patient.findUnique({
+      where: { id: getIdParam(req) },
+      include: { doctor: { select: { unitId: true } } },
+    })
     const patient = await prisma.patient.update({
       where: { id: getIdParam(req) },
       data: {
@@ -70,6 +84,17 @@ export async function updatePatient(req: Request, res: Response) {
         address: req.body.address,
         historyDate: req.body.historyDate,
       },
+      include: { doctor: { select: { unitId: true } } },
+    })
+    writeAuditLog(req, {
+      action: 'updated',
+      entityType: 'patient',
+      entityId: patient.id,
+      summary: `Paciente actualizado: ${patient.name}`,
+      unitId: patient.doctor.unitId,
+      doctorId: patient.doctorId,
+      before: existing,
+      after: patient,
     })
     res.json(patient)
   } catch {
@@ -78,7 +103,10 @@ export async function updatePatient(req: Request, res: Response) {
 }
 
 export async function deletePatient(req: Request, res: Response) {
-  const patient = await prisma.patient.findUnique({ where: { id: getIdParam(req) } })
+  const patient = await prisma.patient.findUnique({
+    where: { id: getIdParam(req) },
+    include: { doctor: { select: { unitId: true } } },
+  })
   if (!patient) {
     res.status(404).json({ error: 'Patient not found' })
     return
@@ -87,6 +115,15 @@ export async function deletePatient(req: Request, res: Response) {
     await tx.visitEntry.deleteMany({ where: { patientId: patient.id } })
     await tx.appointment.deleteMany({ where: { patientId: patient.id } })
     await tx.patient.delete({ where: { id: patient.id } })
+  })
+  writeAuditLog(req, {
+    action: 'deleted',
+    entityType: 'patient',
+    entityId: patient.id,
+    summary: `Paciente eliminado: ${patient.name}`,
+    unitId: patient.doctor.unitId,
+    doctorId: patient.doctorId,
+    before: patient,
   })
   res.status(204).send()
 }

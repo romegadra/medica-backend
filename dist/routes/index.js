@@ -13,6 +13,7 @@ import { changePassword, login } from '../controllers/auth.controller.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createSpecialty, deleteSpecialty, getSpecialty, listSpecialties, updateSpecialty, } from '../controllers/specialties.controller.js';
 import { getSettings, updateSettings } from '../controllers/settings.controller.js';
+import { listAuditLogs } from '../controllers/audit.controller.js';
 export const router = Router();
 router.post('/auth/login', login);
 router.use(requireAuth);
@@ -24,6 +25,7 @@ router.post('/users/admins/:id/reset-password', requireRole(['admin', 'superadmi
 router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteAdminUser);
 router.get('/settings', getSettings);
 router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings);
+router.get('/audit-logs', requireRole(['admin', 'superadmin']), listAuditLogs);
 router.get('/specialties', listSpecialties);
 router.get('/specialties/:id', getSpecialty);
 router.post('/specialties', createSpecialty);

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 import { localParts } from '../utils/schedule.js'
+import { writeAuditLog } from '../services/audit.service.js'
 
 function canAccessDoctor(auth: Request['auth'], doctor: { id: string; unitId: string }) {
   if (!auth) return false
@@ -121,6 +122,15 @@ export async function createDoctorBlockedTime(req: Request, res: Response) {
       endTime: recurrenceType === 'weekly' ? endTime : null,
     },
   })
+  writeAuditLog(req, {
+    action: 'created',
+    entityType: 'doctor-block',
+    entityId: block.id,
+    summary: 'Horario bloqueado',
+    unitId: doctor.unitId,
+    doctorId: doctor.id,
+    after: block,
+  })
   res.status(201).json(block)
 }
 
@@ -208,5 +218,14 @@ export async function deleteDoctorBlockedTime(req: Request, res: Response) {
   }
 
   await prisma.doctorBlockedTime.delete({ where: { id: block.id } })
+  writeAuditLog(req, {
+    action: 'deleted',
+    entityType: 'doctor-block',
+    entityId: block.id,
+    summary: 'Horario desbloqueado',
+    unitId: block.doctor.unitId,
+    doctorId: block.doctor.id,
+    before: block,
+  })
   res.status(204).send()
 }

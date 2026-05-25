@@ -79,6 +79,7 @@ import {
   updateSpecialty,
 } from '../controllers/specialties.controller.js'
 import { getSettings, updateSettings } from '../controllers/settings.controller.js'
+import { listAuditLogs } from '../controllers/audit.controller.js'
 
 export const router = Router()
 
@@ -98,6 +99,8 @@ router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteA
 
 router.get('/settings', getSettings)
 router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings)
+
+router.get('/audit-logs', requireRole(['admin', 'superadmin']), listAuditLogs)
 
 router.get('/specialties', listSpecialties)
 router.get('/specialties/:id', getSpecialty)
