@@ -8,6 +8,7 @@ import { writeAuditLog } from '../services/audit.service.js'
 function canAccessDoctor(auth: Request['auth'], doctor: { id: string; unitId: string }) {
   if (!auth) return false
   if (auth.role === 'superadmin') return true
+  if (auth.role === 'admin' && !auth.unitId) return true
   if (auth.role === 'doctor') return auth.doctorId === doctor.id
   return Boolean(auth.unitId && auth.unitId === doctor.unitId)
 }
