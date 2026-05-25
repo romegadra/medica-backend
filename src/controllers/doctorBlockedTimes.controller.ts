@@ -5,12 +5,25 @@ import { getIdParam } from '../utils/params.js'
 import { localParts } from '../utils/schedule.js'
 import { writeAuditLog } from '../services/audit.service.js'
 
-function canAccessDoctor(auth: Request['auth'], doctor: { id: string; unitId: string }) {
+async function getAuthUnitId(auth: Request['auth']) {
+  if (auth?.unitId) return auth.unitId
+  if (auth?.role === 'receptionist' && auth.receptionistId) {
+    const receptionist = await prisma.receptionist.findUnique({
+      where: { id: auth.receptionistId },
+      select: { unitId: true },
+    })
+    return receptionist?.unitId
+  }
+  return undefined
+}
+
+async function canAccessDoctor(auth: Request['auth'], doctor: { id: string; unitId: string }) {
   if (!auth) return false
   if (auth.role === 'superadmin') return true
   if (auth.role === 'admin' && !auth.unitId) return true
   if (auth.role === 'doctor') return auth.doctorId === doctor.id
-  return Boolean(auth.unitId && auth.unitId === doctor.unitId)
+  const unitId = await getAuthUnitId(auth)
+  return Boolean(unitId && unitId === doctor.unitId)
 }
 
 export async function listDoctorBlockedTimes(req: Request, res: Response) {
@@ -22,8 +35,13 @@ export async function listDoctorBlockedTimes(req: Request, res: Response) {
   }
   if (req.auth?.role === 'doctor') {
     where.doctorId = req.auth.doctorId ?? '__none__'
-  } else if (req.auth?.unitId) {
-    where.doctor = { unitId: req.auth.unitId }
+  } else {
+    const unitId = await getAuthUnitId(req.auth)
+    if (unitId) {
+      where.doctor = { unitId }
+    } else if (req.auth?.role === 'receptionist') {
+      where.doctor = { unitId: '__none__' }
+    }
   }
 
   const blocks = await prisma.doctorBlockedTime.findMany({
@@ -66,7 +84,7 @@ export async function createDoctorBlockedTime(req: Request, res: Response) {
     res.status(404).json({ error: 'Doctor not found' })
     return
   }
-  if (!canAccessDoctor(req.auth, doctor)) {
+  if (!(await canAccessDoctor(req.auth, doctor))) {
     res.status(403).json({ error: 'Forbidden' })
     return
   }
@@ -213,7 +231,7 @@ export async function deleteDoctorBlockedTime(req: Request, res: Response) {
     res.status(404).json({ error: 'Blocked time not found' })
     return
   }
-  if (!canAccessDoctor(req.auth, block.doctor)) {
+  if (!(await canAccessDoctor(req.auth, block.doctor))) {
     res.status(403).json({ error: 'Forbidden' })
     return
   }
