@@ -26,7 +26,11 @@ function getTemplateSid(event: AppointmentEvent, audience: AppointmentAudience) 
   const eventKey =
     event === 'created' ? 'CREATED' : event === 'updated' ? 'UPDATED' : 'CANCELLED'
   const audienceKey = audience === 'patient' ? 'PATIENT' : 'DOCTOR'
-  return process.env[`TWILIO_TEMPLATE_APPOINTMENT_${eventKey}_${audienceKey}`]
+  const envKey = `TWILIO_TEMPLATE_APPOINTMENT_${eventKey}_${audienceKey}`
+  return {
+    envKey,
+    contentSid: process.env[envKey],
+  }
 }
 
 function normalizeWhatsAppPhone(phone?: string | null) {
@@ -98,6 +102,9 @@ async function sendTwilioWhatsApp(params: {
     payload.set('ContentSid', params.contentSid)
     payload.set('ContentVariables', JSON.stringify(params.contentVariables ?? {}))
   } else {
+    if (from.startsWith('whatsapp:')) {
+      throw new Error('Missing Twilio WhatsApp template ContentSid')
+    }
     payload.set('Body', params.body)
   }
 
@@ -202,14 +209,20 @@ export async function notifyAppointment(event: AppointmentEvent, appointmentId: 
     const messages = rawMessages.filter((message): message is NotificationMessage => Boolean(message))
 
     await Promise.all(
-      messages.map((message) =>
+      messages.map((message) => {
+        const template = getTemplateSid(event, message.audience)
+        if (!template.contentSid) {
+          throw new Error(`Missing required Railway variable: ${template.envKey}`)
+        }
+        return (
         sendWhatsApp({
           to: message.to,
           body: message.body,
-          contentSid: getTemplateSid(event, message.audience),
+          contentSid: template.contentSid,
           contentVariables: message.contentVariables,
-        }),
-      ),
+        })
+        )
+      }),
     )
   } catch (error) {
     // eslint-disable-next-line no-console
