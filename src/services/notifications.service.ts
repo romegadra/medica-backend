@@ -100,10 +100,7 @@ async function sendTwilioWhatsApp(params: {
     payload.set('ContentSid', params.contentSid)
     payload.set('ContentVariables', JSON.stringify(params.contentVariables ?? {}))
   } else {
-    if (from.startsWith('whatsapp:')) {
-      throw new Error('Missing Twilio WhatsApp template ContentSid')
-    }
-    payload.set('Body', params.body)
+    throw new Error('Missing Twilio WhatsApp template ContentSid')
   }
 
   const response = await fetch(
