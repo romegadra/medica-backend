@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
+import { normalizePhone } from '../utils/phone.js'
 
 export async function listDoctors(req: Request, res: Response) {
   const where: Prisma.DoctorWhereInput = {}
@@ -47,7 +48,7 @@ export async function createDoctor(req: Request, res: Response) {
         email,
         unitId: req.body.unitId,
         specialtyId: req.body.specialtyId ?? null,
-        phone: req.body.phone,
+        phone: normalizePhone(req.body.phone),
         licenseNumber: req.body.licenseNumber,
         canEditPatients: req.body.canEditPatients ?? true,
         canManageVisits: req.body.canManageVisits ?? true,
@@ -105,7 +106,7 @@ export async function updateDoctor(req: Request, res: Response) {
           email: nextEmail,
           unitId: req.body.unitId,
           specialtyId: req.body.specialtyId ?? null,
-          phone: req.body.phone,
+          phone: normalizePhone(req.body.phone),
           licenseNumber: req.body.licenseNumber,
           canEditPatients: req.body.canEditPatients,
           canManageVisits: req.body.canManageVisits,

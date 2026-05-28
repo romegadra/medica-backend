@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
+import { normalizePhone } from '../utils/phone.js'
 
 export async function listReceptionists(req: Request, res: Response) {
   const where: Prisma.ReceptionistWhereInput = {}
@@ -39,7 +40,7 @@ export async function createReceptionist(req: Request, res: Response) {
         name: req.body.name,
         email,
         address: req.body.address,
-        phone: req.body.phone,
+        phone: normalizePhone(req.body.phone) ?? '',
         unitId: req.body.unitId,
       },
     })
@@ -72,7 +73,7 @@ export async function updateReceptionist(req: Request, res: Response) {
           name: req.body.name,
           email: req.body.email ?? existing.email,
           address: req.body.address,
-          phone: req.body.phone,
+          phone: normalizePhone(req.body.phone) ?? '',
           unitId: req.body.unitId,
         },
       })

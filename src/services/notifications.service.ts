@@ -1,4 +1,5 @@
 import { prisma } from '../prisma.js'
+import { normalizePhone } from '../utils/phone.js'
 
 type AppointmentEvent = 'created' | 'updated' | 'cancelled'
 type AppointmentAudience = 'patient' | 'doctor'
@@ -34,11 +35,8 @@ function getTemplateSid(event: AppointmentEvent, audience: AppointmentAudience) 
 }
 
 function normalizeWhatsAppPhone(phone?: string | null) {
-  if (!phone) return null
-  const trimmed = phone.trim()
-  if (!trimmed) return null
-  const withCountry = trimmed.startsWith('+') ? trimmed : `+${trimmed.replace(/\D/g, '')}`
-  return `whatsapp:${withCountry}`
+  const normalized = normalizePhone(phone)
+  return normalized ? `whatsapp:${normalized}` : null
 }
 
 function getEventLabel(event: AppointmentEvent) {

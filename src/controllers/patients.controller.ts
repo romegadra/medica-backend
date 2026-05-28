@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
+import { normalizePhone } from '../utils/phone.js'
 import { writeAuditLog } from '../services/audit.service.js'
 
 export async function listPatients(req: Request, res: Response) {
@@ -56,7 +57,7 @@ export async function createPatient(req: Request, res: Response) {
     data: {
       doctorId: req.body.doctorId,
       name: req.body.name,
-      phone: req.body.phone,
+      phone: normalizePhone(req.body.phone),
       address: req.body.address,
       historyDate: req.body.historyDate,
     },
@@ -99,7 +100,7 @@ export async function updatePatient(req: Request, res: Response) {
       data: {
         doctorId: req.body.doctorId,
         name: req.body.name,
-        phone: req.body.phone,
+        phone: normalizePhone(req.body.phone),
         address: req.body.address,
         historyDate: req.body.historyDate,
       },
