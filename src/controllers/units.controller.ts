@@ -26,6 +26,7 @@ export async function createUnit(req: Request, res: Response) {
       address: req.body.address,
       phone: req.body.phone,
       adminName: req.body.adminName,
+      logoUrl: req.body.logoUrl,
     },
   })
   res.status(201).json(unit)
@@ -33,6 +34,10 @@ export async function createUnit(req: Request, res: Response) {
 
 export async function updateUnit(req: Request, res: Response) {
   try {
+    if (req.auth?.role !== 'superadmin' && req.auth?.unitId !== getIdParam(req)) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
     const unit = await prisma.unit.update({
       where: { id: getIdParam(req) },
       data: {
@@ -41,6 +46,7 @@ export async function updateUnit(req: Request, res: Response) {
         address: req.body.address,
         phone: req.body.phone,
         adminName: req.body.adminName,
+        logoUrl: req.body.logoUrl,
       },
     })
     res.json(unit)

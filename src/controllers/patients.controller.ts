@@ -34,7 +34,7 @@ export async function getPatient(req: Request, res: Response) {
 export async function createPatient(req: Request, res: Response) {
   const doctor = await prisma.doctor.findUnique({
     where: { id: req.body.doctorId },
-    select: { id: true, unitId: true },
+    select: { id: true, unitId: true, canEditPatients: true },
   })
   if (!doctor) {
     res.status(400).json({ error: 'Doctor not found' })
@@ -45,6 +45,10 @@ export async function createPatient(req: Request, res: Response) {
     (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== doctor.unitId)
   ) {
     res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+  if (req.auth?.role === 'doctor' && !doctor.canEditPatients) {
+    res.status(403).json({ error: 'Doctor cannot edit patients' })
     return
   }
 
@@ -73,8 +77,23 @@ export async function updatePatient(req: Request, res: Response) {
   try {
     const existing = await prisma.patient.findUnique({
       where: { id: getIdParam(req) },
-      include: { doctor: { select: { unitId: true } } },
+      include: { doctor: { select: { unitId: true, canEditPatients: true } } },
     })
+    if (!existing) {
+      res.status(404).json({ error: 'Patient not found' })
+      return
+    }
+    if (
+      (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+      (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
+    ) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+    if (req.auth?.role === 'doctor' && !existing.doctor.canEditPatients) {
+      res.status(403).json({ error: 'Doctor cannot edit patients' })
+      return
+    }
     const patient = await prisma.patient.update({
       where: { id: getIdParam(req) },
       data: {
@@ -105,10 +124,21 @@ export async function updatePatient(req: Request, res: Response) {
 export async function deletePatient(req: Request, res: Response) {
   const patient = await prisma.patient.findUnique({
     where: { id: getIdParam(req) },
-    include: { doctor: { select: { unitId: true } } },
+    include: { doctor: { select: { unitId: true, canEditPatients: true } } },
   })
   if (!patient) {
     res.status(404).json({ error: 'Patient not found' })
+    return
+  }
+  if (
+    (req.auth?.role === 'doctor' && req.auth.doctorId !== patient.doctorId) ||
+    (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== patient.doctor.unitId)
+  ) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+  if (req.auth?.role === 'doctor' && !patient.doctor.canEditPatients) {
+    res.status(403).json({ error: 'Doctor cannot edit patients' })
     return
   }
   await prisma.$transaction(async (tx) => {

@@ -1,0 +1,1 @@
+ALTER TABLE "Unit" ADD COLUMN "logoUrl" TEXT;

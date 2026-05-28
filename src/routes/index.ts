@@ -110,9 +110,9 @@ router.delete('/specialties/:id', deleteSpecialty)
 
 router.get('/units', listUnits)
 router.get('/units/:id', getUnit)
-router.post('/units', createUnit)
-router.put('/units/:id', updateUnit)
-router.delete('/units/:id', deleteUnit)
+router.post('/units', requireRole(['superadmin']), createUnit)
+router.put('/units/:id', requireRole(['admin', 'superadmin']), updateUnit)
+router.delete('/units/:id', requireRole(['superadmin']), deleteUnit)
 
 router.get('/doctors', listDoctors)
 router.get('/doctors/:id', getDoctor)

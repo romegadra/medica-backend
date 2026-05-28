@@ -31,6 +31,26 @@ export async function getVisit(req: Request, res: Response) {
 }
 
 export async function createVisit(req: Request, res: Response) {
+  const doctor = await prisma.doctor.findUnique({
+    where: { id: req.body.doctorId },
+    select: { id: true, unitId: true, canManageVisits: true },
+  })
+  if (!doctor) {
+    res.status(400).json({ error: 'Doctor not found' })
+    return
+  }
+  if (
+    (req.auth?.role === 'doctor' && req.auth.doctorId !== doctor.id) ||
+    (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== doctor.unitId)
+  ) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+  if (req.auth?.role === 'doctor' && !doctor.canManageVisits) {
+    res.status(403).json({ error: 'Doctor cannot manage visits' })
+    return
+  }
+
   const visit = await prisma.visitEntry.create({
     data: {
       doctorId: req.body.doctorId,
@@ -45,6 +65,26 @@ export async function createVisit(req: Request, res: Response) {
 
 export async function updateVisit(req: Request, res: Response) {
   try {
+    const existing = await prisma.visitEntry.findUnique({
+      where: { id: getIdParam(req) },
+      include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+    })
+    if (!existing) {
+      res.status(404).json({ error: 'Visit not found' })
+      return
+    }
+    if (
+      (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+      (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
+    ) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+    if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+      res.status(403).json({ error: 'Doctor cannot manage visits' })
+      return
+    }
+
     const visit = await prisma.visitEntry.update({
       where: { id: getIdParam(req) },
       data: {
@@ -63,6 +103,26 @@ export async function updateVisit(req: Request, res: Response) {
 
 export async function deleteVisit(req: Request, res: Response) {
   try {
+    const existing = await prisma.visitEntry.findUnique({
+      where: { id: getIdParam(req) },
+      include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+    })
+    if (!existing) {
+      res.status(404).json({ error: 'Visit not found' })
+      return
+    }
+    if (
+      (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+      (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
+    ) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+    if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+      res.status(403).json({ error: 'Doctor cannot manage visits' })
+      return
+    }
+
     await prisma.visitEntry.delete({ where: { id: getIdParam(req) } })
     res.status(204).send()
   } catch {
