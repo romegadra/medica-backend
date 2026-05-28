@@ -103,6 +103,14 @@ async function sendTwilioWhatsApp(params: {
     throw new Error('Missing Twilio WhatsApp template ContentSid')
   }
 
+  // eslint-disable-next-line no-console
+  console.info('[notifications:twilio-template]', {
+    to: params.to,
+    from,
+    contentSid: params.contentSid,
+    contentVariables: params.contentVariables,
+  })
+
   const response = await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
     {
@@ -209,6 +217,13 @@ export async function notifyAppointment(event: AppointmentEvent, appointmentId: 
         if (!template.contentSid) {
           throw new Error(`Missing required Railway variable: ${template.envKey}`)
         }
+        // eslint-disable-next-line no-console
+        console.info('[notifications:template-selected]', {
+          event,
+          audience: message.audience,
+          envKey: template.envKey,
+          contentSid: template.contentSid,
+        })
         return (
         sendWhatsApp({
           to: message.to,
