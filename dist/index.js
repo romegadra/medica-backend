@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { router } from './routes/index.js';
 import { errorHandler, notFound } from './middleware/errors.js';
+import { startAppointmentReminderJob } from './services/notifications.service.js';
 dotenv.config();
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
@@ -37,4 +38,5 @@ app.use(errorHandler);
 app.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log(`medBackend listening on port ${port}`);
+    startAppointmentReminderJob();
 });

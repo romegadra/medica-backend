@@ -1,5 +1,8 @@
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
+function isMasterAdmin(req) {
+    return req.auth?.role === 'superadmin' || (req.auth?.role === 'admin' && !req.auth.unitId);
+}
 export async function listUnits(req, res) {
     const where = req.auth?.unitId ? { id: req.auth.unitId } : {};
     const units = await prisma.unit.findMany({ where, orderBy: { name: 'asc' } });
@@ -14,6 +17,10 @@ export async function getUnit(req, res) {
     res.json(unit);
 }
 export async function createUnit(req, res) {
+    if (!isMasterAdmin(req)) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
     const unit = await prisma.unit.create({
         data: {
             name: req.body.name,
@@ -21,12 +28,17 @@ export async function createUnit(req, res) {
             address: req.body.address,
             phone: req.body.phone,
             adminName: req.body.adminName,
+            logoUrl: req.body.logoUrl,
         },
     });
     res.status(201).json(unit);
 }
 export async function updateUnit(req, res) {
     try {
+        if (!isMasterAdmin(req) && req.auth?.unitId !== getIdParam(req)) {
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
         const unit = await prisma.unit.update({
             where: { id: getIdParam(req) },
             data: {
@@ -35,6 +47,7 @@ export async function updateUnit(req, res) {
                 address: req.body.address,
                 phone: req.body.phone,
                 adminName: req.body.adminName,
+                logoUrl: req.body.logoUrl,
             },
         });
         res.json(unit);
@@ -44,6 +57,10 @@ export async function updateUnit(req, res) {
     }
 }
 export async function deleteUnit(req, res) {
+    if (!isMasterAdmin(req)) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
     const unit = await prisma.unit.findUnique({ where: { id: getIdParam(req) } });
     if (!unit) {
         res.status(404).json({ error: 'Unit not found' });

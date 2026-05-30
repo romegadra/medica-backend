@@ -34,7 +34,7 @@ export async function createAppointment(req, res) {
     const end = new Date(req.body.end);
     const patient = await prisma.patient.findFirst({
         where: { id: req.body.patientId, doctorId: req.body.doctorId },
-        include: { doctor: { select: { unitId: true } } },
+        include: { doctor: { select: { unitId: true, canManageVisits: true } } },
     });
     if (!patient) {
         res.status(400).json({ error: 'Patient not found for selected doctor' });
@@ -43,6 +43,10 @@ export async function createAppointment(req, res) {
     if ((req.auth?.role === 'doctor' && req.auth.doctorId !== req.body.doctorId) ||
         (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== patient.doctor.unitId)) {
         res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
+    if (req.auth?.role === 'doctor' && !patient.doctor.canManageVisits) {
+        res.status(403).json({ error: 'Doctor cannot manage appointments' });
         return;
     }
     const scheduleViolation = await getScheduleViolation(req.body.doctorId, start, end);
@@ -92,7 +96,7 @@ export async function createAppointment(req, res) {
 export async function updateAppointment(req, res) {
     const existing = await prisma.appointment.findUnique({
         where: { id: getIdParam(req) },
-        include: { doctor: { select: { unitId: true } } },
+        include: { doctor: { select: { unitId: true, canManageVisits: true } } },
     });
     if (!existing) {
         res.status(404).json({ error: 'Appointment not found' });
@@ -102,6 +106,15 @@ export async function updateAppointment(req, res) {
     const end = req.body.end ? new Date(req.body.end) : existing.end;
     const doctorId = req.body.doctorId ?? existing.doctorId;
     const status = req.body.status ?? existing.status;
+    if ((req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+        (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+    }
+    if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+        res.status(403).json({ error: 'Doctor cannot manage appointments' });
+        return;
+    }
     if (status !== 'cancelled') {
         const scheduleViolation = await getScheduleViolation(doctorId, start, end);
         if (scheduleViolation) {
@@ -164,6 +177,23 @@ export async function updateAppointment(req, res) {
 }
 export async function cancelAppointment(req, res) {
     try {
+        const existing = await prisma.appointment.findUnique({
+            where: { id: getIdParam(req) },
+            include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+        });
+        if (!existing) {
+            res.status(404).json({ error: 'Appointment not found' });
+            return;
+        }
+        if ((req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+            (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)) {
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
+        if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+            res.status(403).json({ error: 'Doctor cannot manage appointments' });
+            return;
+        }
         const appointment = await prisma.appointment.update({
             where: { id: getIdParam(req) },
             data: {
@@ -171,7 +201,7 @@ export async function cancelAppointment(req, res) {
                 cancellationReason: req.body.reason ?? null,
                 cancelledAt: new Date(),
             },
-            include: { doctor: { select: { unitId: true } } },
+            include: { doctor: { select: { unitId: true, canManageVisits: true } } },
         });
         writeAuditLog(req, {
             action: 'cancelled',

@@ -38,6 +38,7 @@ model Doctor {
   specialtyId     String?
   phone           String?
   licenseNumber   String?
+  profileImageUrl String?
   canEditPatients Boolean     @default(true)
   canManageVisits Boolean     @default(true)
   notificationsEnabled Boolean @default(true)

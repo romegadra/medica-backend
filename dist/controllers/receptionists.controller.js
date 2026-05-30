@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../prisma.js';
 import { getIdParam } from '../utils/params.js';
+import { normalizePhone } from '../utils/phone.js';
 export async function listReceptionists(req, res) {
     const where = {};
     if (req.auth?.role === 'receptionist') {
@@ -34,7 +35,7 @@ export async function createReceptionist(req, res) {
                 name: req.body.name,
                 email,
                 address: req.body.address,
-                phone: req.body.phone,
+                phone: normalizePhone(req.body.phone) ?? '',
                 unitId: req.body.unitId,
             },
         });
@@ -66,7 +67,7 @@ export async function updateReceptionist(req, res) {
                     name: req.body.name,
                     email: req.body.email ?? existing.email,
                     address: req.body.address,
-                    phone: req.body.phone,
+                    phone: normalizePhone(req.body.phone) ?? '',
                     unitId: req.body.unitId,
                 },
             });
