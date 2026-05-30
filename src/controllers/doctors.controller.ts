@@ -52,6 +52,7 @@ export async function createDoctor(req: Request, res: Response) {
         licenseNumber: req.body.licenseNumber,
         canEditPatients: req.body.canEditPatients ?? true,
         canManageVisits: req.body.canManageVisits ?? true,
+        notificationsEnabled: req.body.notificationsEnabled ?? true,
       },
     })
     await tx.user.create({
@@ -110,6 +111,7 @@ export async function updateDoctor(req: Request, res: Response) {
           licenseNumber: req.body.licenseNumber,
           canEditPatients: req.body.canEditPatients,
           canManageVisits: req.body.canManageVisits,
+          notificationsEnabled: req.body.notificationsEnabled,
         },
       })
       if (nextEmail !== existing.email) {

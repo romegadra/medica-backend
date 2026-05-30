@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { prisma } from '../prisma.js'
+import { sendAppointmentReminders } from '../services/notifications.service.js'
 
 const settingsId = 'default'
 
@@ -8,11 +9,15 @@ function normalizeSettings(body: {
   endHour?: unknown
   slotMinutes?: unknown
   allowOverlap?: unknown
+  appointmentRemindersEnabled?: unknown
+  appointmentReminderIntervalMinutes?: unknown
 }) {
   const startHour = Number(body.startHour)
   const endHour = Number(body.endHour)
   const slotMinutes = Number(body.slotMinutes)
   const allowOverlap = Boolean(body.allowOverlap)
+  const appointmentRemindersEnabled = Boolean(body.appointmentRemindersEnabled)
+  const appointmentReminderIntervalMinutes = Number(body.appointmentReminderIntervalMinutes)
 
   if (
     !Number.isInteger(startHour) ||
@@ -24,12 +29,22 @@ function normalizeSettings(body: {
     endHour > 24 ||
     startHour >= endHour ||
     slotMinutes < 10 ||
-    slotMinutes > 120
+    slotMinutes > 120 ||
+    !Number.isInteger(appointmentReminderIntervalMinutes) ||
+    appointmentReminderIntervalMinutes < 5 ||
+    appointmentReminderIntervalMinutes > 1440
   ) {
     return null
   }
 
-  return { startHour, endHour, slotMinutes, allowOverlap }
+  return {
+    startHour,
+    endHour,
+    slotMinutes,
+    allowOverlap,
+    appointmentRemindersEnabled,
+    appointmentReminderIntervalMinutes,
+  }
 }
 
 export async function getSettings(_req: Request, res: Response) {
@@ -39,6 +54,11 @@ export async function getSettings(_req: Request, res: Response) {
     create: { id: settingsId },
   })
   res.json(settings)
+}
+
+export async function runAppointmentRemindersNow(_req: Request, res: Response) {
+  const count = await sendAppointmentReminders({ force: true })
+  res.json({ ok: true, count })
 }
 
 export async function updateSettings(req: Request, res: Response) {

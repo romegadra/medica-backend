@@ -78,7 +78,11 @@ import {
   listSpecialties,
   updateSpecialty,
 } from '../controllers/specialties.controller.js'
-import { getSettings, updateSettings } from '../controllers/settings.controller.js'
+import {
+  getSettings,
+  runAppointmentRemindersNow,
+  updateSettings,
+} from '../controllers/settings.controller.js'
 import { listAuditLogs } from '../controllers/audit.controller.js'
 
 export const router = Router()
@@ -99,6 +103,11 @@ router.delete('/users/admins/:id', requireRole(['admin', 'superadmin']), deleteA
 
 router.get('/settings', getSettings)
 router.put('/settings', requireRole(['admin', 'superadmin']), updateSettings)
+router.post(
+  '/settings/run-appointment-reminders',
+  requireRole(['admin', 'superadmin']),
+  runAppointmentRemindersNow,
+)
 
 router.get('/audit-logs', requireRole(['admin', 'superadmin']), listAuditLogs)
 
@@ -110,9 +119,9 @@ router.delete('/specialties/:id', deleteSpecialty)
 
 router.get('/units', listUnits)
 router.get('/units/:id', getUnit)
-router.post('/units', requireRole(['superadmin']), createUnit)
+router.post('/units', requireRole(['admin', 'superadmin']), createUnit)
 router.put('/units/:id', requireRole(['admin', 'superadmin']), updateUnit)
-router.delete('/units/:id', requireRole(['superadmin']), deleteUnit)
+router.delete('/units/:id', requireRole(['admin', 'superadmin']), deleteUnit)
 
 router.get('/doctors', listDoctors)
 router.get('/doctors/:id', getDoctor)

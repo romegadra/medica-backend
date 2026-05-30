@@ -3,6 +3,10 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 
+function isMasterAdmin(req: Request) {
+  return req.auth?.role === 'superadmin' || (req.auth?.role === 'admin' && !req.auth.unitId)
+}
+
 export async function listUnits(req: Request, res: Response) {
   const where: Prisma.UnitWhereInput = req.auth?.unitId ? { id: req.auth.unitId } : {}
   const units = await prisma.unit.findMany({ where, orderBy: { name: 'asc' } })
@@ -19,6 +23,11 @@ export async function getUnit(req: Request, res: Response) {
 }
 
 export async function createUnit(req: Request, res: Response) {
+  if (!isMasterAdmin(req)) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+
   const unit = await prisma.unit.create({
     data: {
       name: req.body.name,
@@ -34,7 +43,7 @@ export async function createUnit(req: Request, res: Response) {
 
 export async function updateUnit(req: Request, res: Response) {
   try {
-    if (req.auth?.role !== 'superadmin' && req.auth?.unitId !== getIdParam(req)) {
+    if (!isMasterAdmin(req) && req.auth?.unitId !== getIdParam(req)) {
       res.status(403).json({ error: 'Forbidden' })
       return
     }
@@ -56,6 +65,11 @@ export async function updateUnit(req: Request, res: Response) {
 }
 
 export async function deleteUnit(req: Request, res: Response) {
+  if (!isMasterAdmin(req)) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+
   const unit = await prisma.unit.findUnique({ where: { id: getIdParam(req) } })
   if (!unit) {
     res.status(404).json({ error: 'Unit not found' })
