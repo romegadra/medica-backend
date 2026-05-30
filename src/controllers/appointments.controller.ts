@@ -4,6 +4,7 @@ import { prisma } from '../prisma.js'
 import { getIdParam } from '../utils/params.js'
 import { getScheduleViolation } from '../utils/schedule.js'
 import { notifyAppointment } from '../services/notifications.service.js'
+import { writeAuditLog } from '../services/audit.service.js'
 
 export async function listAppointments(req: Request, res: Response) {
   const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
@@ -40,7 +41,7 @@ export async function createAppointment(req: Request, res: Response) {
   const end = new Date(req.body.end)
   const patient = await prisma.patient.findFirst({
     where: { id: req.body.patientId, doctorId: req.body.doctorId },
-    include: { doctor: { select: { unitId: true } } },
+    include: { doctor: { select: { unitId: true, canManageVisits: true } } },
   })
   if (!patient) {
     res.status(400).json({ error: 'Patient not found for selected doctor' })
@@ -51,6 +52,10 @@ export async function createAppointment(req: Request, res: Response) {
     (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== patient.doctor.unitId)
   ) {
     res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+  if (req.auth?.role === 'doctor' && !patient.doctor.canManageVisits) {
+    res.status(403).json({ error: 'Doctor cannot manage appointments' })
     return
   }
 
@@ -87,12 +92,24 @@ export async function createAppointment(req: Request, res: Response) {
       cancelledAt: req.body.status === 'cancelled' ? new Date() : null,
     },
   })
+  writeAuditLog(req, {
+    action: 'created',
+    entityType: 'appointment',
+    entityId: appointment.id,
+    summary: `Cita creada para ${appointment.title}`,
+    unitId: patient.doctor.unitId,
+    doctorId: appointment.doctorId,
+    after: appointment,
+  })
   void notifyAppointment('created', appointment.id)
   res.status(201).json(appointment)
 }
 
 export async function updateAppointment(req: Request, res: Response) {
-  const existing = await prisma.appointment.findUnique({ where: { id: getIdParam(req) } })
+  const existing = await prisma.appointment.findUnique({
+    where: { id: getIdParam(req) },
+    include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+  })
   if (!existing) {
     res.status(404).json({ error: 'Appointment not found' })
     return
@@ -101,6 +118,17 @@ export async function updateAppointment(req: Request, res: Response) {
   const end = req.body.end ? new Date(req.body.end) : existing.end
   const doctorId = req.body.doctorId ?? existing.doctorId
   const status = req.body.status ?? existing.status
+  if (
+    (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+    (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
+  ) {
+    res.status(403).json({ error: 'Forbidden' })
+    return
+  }
+  if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+    res.status(403).json({ error: 'Doctor cannot manage appointments' })
+    return
+  }
   if (status !== 'cancelled') {
     const scheduleViolation = await getScheduleViolation(doctorId, start, end)
     if (scheduleViolation) {
@@ -143,6 +171,19 @@ export async function updateAppointment(req: Request, res: Response) {
             : existing.cancelledAt,
     },
   })
+  writeAuditLog(req, {
+    action: appointment.status === 'rescheduled' ? 'rescheduled' : 'updated',
+    entityType: 'appointment',
+    entityId: appointment.id,
+    summary:
+      appointment.status === 'rescheduled'
+        ? `Cita reagendada para ${appointment.title}`
+        : `Cita actualizada para ${appointment.title}`,
+    unitId: existing.doctor.unitId,
+    doctorId: appointment.doctorId,
+    before: existing,
+    after: appointment,
+  })
   if (appointment.status === 'cancelled') {
     void notifyAppointment('cancelled', appointment.id)
   } else {
@@ -153,6 +194,25 @@ export async function updateAppointment(req: Request, res: Response) {
 
 export async function cancelAppointment(req: Request, res: Response) {
   try {
+    const existing = await prisma.appointment.findUnique({
+      where: { id: getIdParam(req) },
+      include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+    })
+    if (!existing) {
+      res.status(404).json({ error: 'Appointment not found' })
+      return
+    }
+    if (
+      (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
+      (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
+    ) {
+      res.status(403).json({ error: 'Forbidden' })
+      return
+    }
+    if (req.auth?.role === 'doctor' && !existing.doctor.canManageVisits) {
+      res.status(403).json({ error: 'Doctor cannot manage appointments' })
+      return
+    }
     const appointment = await prisma.appointment.update({
       where: { id: getIdParam(req) },
       data: {
@@ -160,6 +220,16 @@ export async function cancelAppointment(req: Request, res: Response) {
         cancellationReason: req.body.reason ?? null,
         cancelledAt: new Date(),
       },
+      include: { doctor: { select: { unitId: true, canManageVisits: true } } },
+    })
+    writeAuditLog(req, {
+      action: 'cancelled',
+      entityType: 'appointment',
+      entityId: appointment.id,
+      summary: `Cita cancelada para ${appointment.title}`,
+      unitId: appointment.doctor.unitId,
+      doctorId: appointment.doctorId,
+      after: appointment,
     })
     void notifyAppointment('cancelled', appointment.id)
     res.json(appointment)
@@ -170,7 +240,19 @@ export async function cancelAppointment(req: Request, res: Response) {
 
 export async function deleteAppointment(req: Request, res: Response) {
   try {
-    await prisma.appointment.delete({ where: { id: getIdParam(req) } })
+    const appointment = await prisma.appointment.delete({
+      where: { id: getIdParam(req) },
+      include: { doctor: { select: { unitId: true } } },
+    })
+    writeAuditLog(req, {
+      action: 'deleted',
+      entityType: 'appointment',
+      entityId: appointment.id,
+      summary: `Cita eliminada para ${appointment.title}`,
+      unitId: appointment.doctor.unitId,
+      doctorId: appointment.doctorId,
+      before: appointment,
+    })
     res.status(204).send()
   } catch {
     res.status(404).json({ error: 'Appointment not found' })
