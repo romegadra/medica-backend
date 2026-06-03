@@ -42,6 +42,7 @@ model Doctor {
   canEditPatients Boolean     @default(true)
   canManageVisits Boolean     @default(true)
   notificationsEnabled Boolean @default(true)
+  showReceptionistOnCalendar Boolean @default(false)
   unit            Unit        @relation(fields: [unitId], references: [id])
   specialty       Specialty?  @relation(fields: [specialtyId], references: [id])
   patients        Patient[]
@@ -87,6 +88,7 @@ model Receptionist {
   phone     String
   unitId    String
   unit      Unit     @relation(fields: [unitId], references: [id])
+  createdAppointments Appointment[] @relation("AppointmentCreatedByReceptionist")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -119,8 +121,10 @@ model Appointment {
   cancellationReason String?
   cancelledAt        DateTime?
   reminderSentAt     DateTime?
+  createdByReceptionistId String?
   doctor             Doctor   @relation(fields: [doctorId], references: [id])
   patient            Patient  @relation(fields: [patientId], references: [id])
+  createdByReceptionist Receptionist? @relation("AppointmentCreatedByReceptionist", fields: [createdByReceptionistId], references: [id])
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }

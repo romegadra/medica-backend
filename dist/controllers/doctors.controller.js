@@ -48,6 +48,7 @@ export async function createDoctor(req, res) {
                 canEditPatients: req.body.canEditPatients ?? true,
                 canManageVisits: req.body.canManageVisits ?? true,
                 notificationsEnabled: req.body.notificationsEnabled ?? true,
+                showReceptionistOnCalendar: req.body.showReceptionistOnCalendar ?? false,
             },
         });
         await tx.user.create({
@@ -105,6 +106,7 @@ export async function updateDoctor(req, res) {
                     canEditPatients: req.body.canEditPatients,
                     canManageVisits: req.body.canManageVisits,
                     notificationsEnabled: req.body.notificationsEnabled,
+                    showReceptionistOnCalendar: req.body.showReceptionistOnCalendar,
                 },
             });
             if (nextEmail !== existing.email) {
