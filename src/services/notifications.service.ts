@@ -1,7 +1,7 @@
 import { prisma } from '../prisma.js'
 import { normalizePhone } from '../utils/phone.js'
 
-type AppointmentEvent = 'created' | 'updated' | 'cancelled'
+type AppointmentEvent = 'created' | 'updated' | 'cancelled' | 'status'
 type AppointmentAudience = 'patient' | 'doctor'
 type NotificationMessage = {
   audience: AppointmentAudience
@@ -37,6 +37,14 @@ function getDateKey(date: Date) {
 }
 
 function getTemplateSid(event: AppointmentEvent, audience: AppointmentAudience) {
+  if (event === 'status') {
+    const envKey = 'TWILIO_TEMPLATE_APPOINTMENT_STATUS_DOCTOR'
+    const fallbackEnvKey = 'TWILIO_TEMPLATE_APPOINTMENT_UPDATED_DOCTOR'
+    return {
+      envKey: process.env[envKey] ? envKey : fallbackEnvKey,
+      contentSid: process.env[envKey] ?? process.env[fallbackEnvKey],
+    }
+  }
   const eventKey =
     event === 'created' ? 'CREATED' : event === 'updated' ? 'UPDATED' : 'CANCELLED'
   const audienceKey = audience === 'patient' ? 'PATIENT' : 'DOCTOR'
@@ -71,6 +79,7 @@ function normalizeWhatsAppPhone(phone?: string | null) {
 function getEventLabel(event: AppointmentEvent) {
   if (event === 'created') return 'agendada'
   if (event === 'updated') return 'actualizada'
+  if (event === 'status') return 'actualizada'
   return 'cancelada'
 }
 
@@ -96,7 +105,13 @@ function buildDoctorMessage(params: {
   doctorName: string
   start: Date
   cancellationReason?: string | null
+  statusLabel?: string
 }) {
+  if (params.event === 'status') {
+    return `Dr(a). ${params.doctorName}, la cita de ${params.patientName} para ${formatAppointmentDate(
+      params.start,
+    )} cambió a: ${params.statusLabel ?? 'estado actualizado'}.`
+  }
   const base = `Dr(a). ${params.doctorName}, la cita de ${params.patientName} fue ${getEventLabel(
     params.event,
   )} para ${formatAppointmentDate(params.start)}.`
@@ -183,7 +198,11 @@ async function sendWhatsApp(params: {
   await sendTwilioWhatsApp(params)
 }
 
-export async function notifyAppointment(event: AppointmentEvent, appointmentId: string) {
+export async function notifyAppointment(
+  event: AppointmentEvent,
+  appointmentId: string,
+  options: { audiences?: AppointmentAudience[]; statusLabel?: string } = {},
+) {
   try {
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -200,8 +219,9 @@ export async function notifyAppointment(event: AppointmentEvent, appointmentId: 
       : null
     const formattedDate = formatAppointmentDate(appointment.start)
     const cancellationReason = appointment.cancellationReason ?? ''
+    const audiences = options.audiences ?? ['patient', 'doctor']
     const rawMessages: Array<NotificationMessage | null> = [
-      patientTo
+      patientTo && audiences.includes('patient')
         ? {
             audience: 'patient' as const,
             to: patientTo,
@@ -220,7 +240,7 @@ export async function notifyAppointment(event: AppointmentEvent, appointmentId: 
             },
           }
         : null,
-      doctorTo
+      doctorTo && audiences.includes('doctor')
         ? {
             audience: 'doctor' as const,
             to: doctorTo,
@@ -230,12 +250,13 @@ export async function notifyAppointment(event: AppointmentEvent, appointmentId: 
               doctorName: appointment.doctor.name,
               start: appointment.start,
               cancellationReason: appointment.cancellationReason,
+              statusLabel: options.statusLabel,
             }),
             contentVariables: {
               '1': appointment.doctor.name,
               '2': appointment.patient.name,
               '3': formattedDate,
-              '4': cancellationReason,
+              '4': options.statusLabel ?? cancellationReason,
             },
           }
         : null,

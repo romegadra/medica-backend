@@ -6,6 +6,24 @@ import { getScheduleViolation } from '../utils/schedule.js'
 import { notifyAppointment } from '../services/notifications.service.js'
 import { writeAuditLog } from '../services/audit.service.js'
 
+const statusLabels: Record<string, string> = {
+  pending: 'Pendiente',
+  scheduled: 'Agendada',
+  confirmed: 'Confirmada',
+  attended: 'Asistió',
+  no_show: 'No asistió',
+  cancelled: 'Cancelada',
+  rescheduled: 'Reagendada',
+}
+
+const paymentLabels: Record<string, string> = {
+  cash: 'Pagada en efectivo',
+  card: 'Pagada con tarjeta',
+  transfer: 'Pagada por transferencia',
+  insurance: 'Pago por seguro',
+}
+const statusChangeNotificationsEnabled = process.env.NOTIFY_APPOINTMENT_STATUS_CHANGES === 'true'
+
 export async function listAppointments(req: Request, res: Response) {
   const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
   const where: Prisma.AppointmentWhereInput = {}
@@ -119,6 +137,10 @@ export async function updateAppointment(req: Request, res: Response) {
   const doctorId = req.body.doctorId ?? existing.doctorId
   const status = req.body.status ?? existing.status
   const statusChanged = status !== existing.status
+  const attended = req.body.attended ?? existing.attended
+  const attendedChanged = attended !== existing.attended
+  const paymentType = req.body.paymentType ?? existing.paymentType
+  const paymentChanged = req.body.paymentType !== undefined && paymentType !== existing.paymentType
   const scheduleChanged =
     start.getTime() !== existing.start.getTime() ||
     end.getTime() !== existing.end.getTime() ||
@@ -164,9 +186,9 @@ export async function updateAppointment(req: Request, res: Response) {
       start,
       end,
       status,
-      attended: req.body.attended ?? existing.attended,
+      attended,
       notes: req.body.notes ?? existing.notes,
-      paymentType: req.body.paymentType ?? existing.paymentType,
+      paymentType,
       cancellationReason: req.body.cancellationReason ?? existing.cancellationReason,
       cancelledAt:
         req.body.status === 'cancelled'
@@ -198,8 +220,18 @@ export async function updateAppointment(req: Request, res: Response) {
   })
   if (appointment.status === 'cancelled') {
     void notifyAppointment('cancelled', appointment.id)
-  } else if (statusChanged || scheduleChanged || req.body.start || req.body.end) {
+  } else if (scheduleChanged || appointment.status === 'rescheduled') {
     void notifyAppointment('updated', appointment.id)
+  } else if (statusChangeNotificationsEnabled && (statusChanged || attendedChanged || paymentChanged)) {
+    const statusLabel = paymentChanged
+      ? paymentLabels[String(paymentType)] ?? 'Pago actualizado'
+      : attended
+        ? 'Asistió'
+        : statusLabels[appointment.status] ?? 'Estado actualizado'
+    void notifyAppointment('status', appointment.id, {
+      audiences: ['doctor'],
+      statusLabel,
+    })
   }
   res.json(appointment)
 }
