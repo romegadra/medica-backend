@@ -18,6 +18,7 @@ const paymentLabels = {
     transfer: 'Pagada por transferencia',
     insurance: 'Pago por seguro',
 };
+const statusChangeNotificationsEnabled = process.env.NOTIFY_APPOINTMENT_STATUS_CHANGES === 'true';
 export async function listAppointments(req, res) {
     const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined;
     const where = {};
@@ -202,7 +203,7 @@ export async function updateAppointment(req, res) {
     else if (scheduleChanged || appointment.status === 'rescheduled') {
         void notifyAppointment('updated', appointment.id);
     }
-    else if (statusChanged || attendedChanged || paymentChanged) {
+    else if (statusChangeNotificationsEnabled && (statusChanged || attendedChanged || paymentChanged)) {
         const statusLabel = paymentChanged
             ? paymentLabels[String(paymentType)] ?? 'Pago actualizado'
             : attended

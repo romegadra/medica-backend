@@ -22,6 +22,7 @@ const paymentLabels: Record<string, string> = {
   transfer: 'Pagada por transferencia',
   insurance: 'Pago por seguro',
 }
+const statusChangeNotificationsEnabled = process.env.NOTIFY_APPOINTMENT_STATUS_CHANGES === 'true'
 
 export async function listAppointments(req: Request, res: Response) {
   const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
@@ -221,7 +222,7 @@ export async function updateAppointment(req: Request, res: Response) {
     void notifyAppointment('cancelled', appointment.id)
   } else if (scheduleChanged || appointment.status === 'rescheduled') {
     void notifyAppointment('updated', appointment.id)
-  } else if (statusChanged || attendedChanged || paymentChanged) {
+  } else if (statusChangeNotificationsEnabled && (statusChanged || attendedChanged || paymentChanged)) {
     const statusLabel = paymentChanged
       ? paymentLabels[String(paymentType)] ?? 'Pago actualizado'
       : attended
