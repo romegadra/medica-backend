@@ -118,6 +118,11 @@ export async function updateAppointment(req: Request, res: Response) {
   const end = req.body.end ? new Date(req.body.end) : existing.end
   const doctorId = req.body.doctorId ?? existing.doctorId
   const status = req.body.status ?? existing.status
+  const statusChanged = status !== existing.status
+  const scheduleChanged =
+    start.getTime() !== existing.start.getTime() ||
+    end.getTime() !== existing.end.getTime() ||
+    doctorId !== existing.doctorId
   if (
     (req.auth?.role === 'doctor' && req.auth.doctorId !== existing.doctorId) ||
     (req.auth?.role !== 'superadmin' && req.auth?.unitId && req.auth.unitId !== existing.doctor.unitId)
@@ -172,11 +177,18 @@ export async function updateAppointment(req: Request, res: Response) {
     },
   })
   writeAuditLog(req, {
-    action: appointment.status === 'rescheduled' ? 'rescheduled' : 'updated',
+    action:
+      appointment.status === 'cancelled'
+        ? 'cancelled'
+        : appointment.status === 'rescheduled' || scheduleChanged
+          ? 'rescheduled'
+          : 'updated',
     entityType: 'appointment',
     entityId: appointment.id,
     summary:
-      appointment.status === 'rescheduled'
+      appointment.status === 'cancelled'
+        ? `Cita cancelada para ${appointment.title}`
+        : appointment.status === 'rescheduled' || scheduleChanged
         ? `Cita reagendada para ${appointment.title}`
         : `Cita actualizada para ${appointment.title}`,
     unitId: existing.doctor.unitId,
@@ -186,7 +198,7 @@ export async function updateAppointment(req: Request, res: Response) {
   })
   if (appointment.status === 'cancelled') {
     void notifyAppointment('cancelled', appointment.id)
-  } else {
+  } else if (statusChanged || scheduleChanged || req.body.start || req.body.end) {
     void notifyAppointment('updated', appointment.id)
   }
   res.json(appointment)

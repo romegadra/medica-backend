@@ -34,7 +34,7 @@ All routes are under `/api`.
 - `PUT /api/patients/:id`
 - `DELETE /api/patients/:id`
 - `GET /api/appointments`
-- `POST /api/appointments`
+- `POST /api/c`
 - `PUT /api/appointments/:id`
 - `DELETE /api/appointments/:id`
 - `GET /api/templates`
