@@ -188,6 +188,8 @@ model AppSettings {
   allowOverlap Boolean  @default(false)
   appointmentRemindersEnabled Boolean @default(false)
   appointmentReminderIntervalMinutes Int @default(60)
+  whatsappPatientNotificationsEnabled Boolean @default(false)
+  whatsappDoctorNotificationsEnabled Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
