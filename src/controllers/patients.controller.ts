@@ -5,6 +5,35 @@ import { getIdParam } from '../utils/params.js'
 import { normalizePhone } from '../utils/phone.js'
 import { writeAuditLog } from '../services/audit.service.js'
 
+function normalizePatientName(name?: string | null) {
+  return (name ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+async function findDuplicatePatient(input: {
+  doctorId: string
+  name?: string | null
+  phone?: string | null
+  ignoreId?: string
+}) {
+  const normalizedName = normalizePatientName(input.name)
+  const normalizedPhone = normalizePhone(input.phone ?? undefined)
+  const existingPatients = await prisma.patient.findMany({
+    where: { doctorId: input.doctorId },
+    select: { id: true, name: true, phone: true },
+  })
+
+  return existingPatients.find((patient) => {
+    if (patient.id === input.ignoreId) return false
+    if (normalizedPhone && normalizePhone(patient.phone ?? undefined) === normalizedPhone) return true
+    return normalizedName.length > 0 && normalizePatientName(patient.name) === normalizedName
+  })
+}
+
 export async function listPatients(req: Request, res: Response) {
   const requestedDoctorId = typeof req.query.doctorId === 'string' ? req.query.doctorId : undefined
   const where: Prisma.PatientWhereInput = {}
@@ -52,6 +81,15 @@ export async function createPatient(req: Request, res: Response) {
     res.status(403).json({ error: 'Doctor cannot edit patients' })
     return
   }
+  const duplicate = await findDuplicatePatient({
+    doctorId: req.body.doctorId,
+    name: req.body.name,
+    phone: req.body.phone,
+  })
+  if (duplicate) {
+    res.status(409).json({ error: `El paciente ya existe: ${duplicate.name}` })
+    return
+  }
 
   const patient = await prisma.patient.create({
     data: {
@@ -93,6 +131,16 @@ export async function updatePatient(req: Request, res: Response) {
     }
     if (req.auth?.role === 'doctor' && !existing.doctor.canEditPatients) {
       res.status(403).json({ error: 'Doctor cannot edit patients' })
+      return
+    }
+    const duplicate = await findDuplicatePatient({
+      doctorId: req.body.doctorId ?? existing.doctorId,
+      name: req.body.name,
+      phone: req.body.phone,
+      ignoreId: existing.id,
+    })
+    if (duplicate) {
+      res.status(409).json({ error: `El paciente ya existe: ${duplicate.name}` })
       return
     }
     const patient = await prisma.patient.update({
