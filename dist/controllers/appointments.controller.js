@@ -95,6 +95,8 @@ export async function createAppointment(req, res) {
             paymentType: req.body.paymentType ?? null,
             cancellationReason: req.body.cancellationReason ?? null,
             cancelledAt: req.body.status === 'cancelled' ? new Date() : null,
+            createdByReceptionistId: req.auth?.role === 'receptionist' ? req.auth.receptionistId ?? null : null,
+            createdByDoctorId: req.auth?.role === 'doctor' ? req.auth.doctorId ?? null : null,
         },
     });
     writeAuditLog(req, {

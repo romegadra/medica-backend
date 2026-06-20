@@ -213,6 +213,7 @@ export async function notifyAppointment(
     })
     if (!appointment) return
 
+    const settings = await getAppSettings()
     const patientTo = normalizeWhatsAppPhone(appointment.patient.phone)
     const doctorTo = appointment.doctor.notificationsEnabled
       ? normalizeWhatsAppPhone(appointment.doctor.phone)
@@ -221,7 +222,7 @@ export async function notifyAppointment(
     const cancellationReason = appointment.cancellationReason ?? ''
     const audiences = options.audiences ?? ['patient', 'doctor']
     const rawMessages: Array<NotificationMessage | null> = [
-      patientTo && audiences.includes('patient')
+      settings.whatsappPatientNotificationsEnabled && patientTo && audiences.includes('patient')
         ? {
             audience: 'patient' as const,
             to: patientTo,
@@ -240,7 +241,7 @@ export async function notifyAppointment(
             },
           }
         : null,
-      doctorTo && audiences.includes('doctor')
+      settings.whatsappDoctorNotificationsEnabled && doctorTo && audiences.includes('doctor')
         ? {
             audience: 'doctor' as const,
             to: doctorTo,
@@ -295,6 +296,9 @@ export async function notifyAppointment(
 export async function sendAppointmentReminders(options: { force?: boolean } = {}) {
   const settings = await getAppSettings()
   if (!options.force && !settings.appointmentRemindersEnabled) {
+    return 0
+  }
+  if (!settings.whatsappPatientNotificationsEnabled) {
     return 0
   }
 

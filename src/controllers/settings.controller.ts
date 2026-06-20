@@ -11,6 +11,8 @@ function normalizeSettings(body: {
   allowOverlap?: unknown
   appointmentRemindersEnabled?: unknown
   appointmentReminderIntervalMinutes?: unknown
+  whatsappPatientNotificationsEnabled?: unknown
+  whatsappDoctorNotificationsEnabled?: unknown
 }) {
   const startHour = Number(body.startHour)
   const endHour = Number(body.endHour)
@@ -18,6 +20,8 @@ function normalizeSettings(body: {
   const allowOverlap = Boolean(body.allowOverlap)
   const appointmentRemindersEnabled = Boolean(body.appointmentRemindersEnabled)
   const appointmentReminderIntervalMinutes = Number(body.appointmentReminderIntervalMinutes)
+  const whatsappPatientNotificationsEnabled = Boolean(body.whatsappPatientNotificationsEnabled)
+  const whatsappDoctorNotificationsEnabled = Boolean(body.whatsappDoctorNotificationsEnabled)
 
   if (
     !Number.isInteger(startHour) ||
@@ -44,6 +48,8 @@ function normalizeSettings(body: {
     allowOverlap,
     appointmentRemindersEnabled,
     appointmentReminderIntervalMinutes,
+    whatsappPatientNotificationsEnabled,
+    whatsappDoctorNotificationsEnabled,
   }
 }
 
